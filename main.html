@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Word Search Deluxe (Silent)</title>
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+
+<body>
+
+    <!-- Home Screen -->
+    <div id="homeScreen" class="homeScreen">
+        <button id="menuToggle">☰</button>
+        <img src="./images/gameLogo.png" alt="logo" class="logo">
+
+
+        <!-- HTML !-->
+        <button class="button-13" role="button" id="start">
+            <span class="text" style="font-weight: 700;">▶</span>
+            <span class="button-13-background"></span>
+            <span class="button-13-border"></span>
+
+            <!-- mask-border fallback -->
+            <svg style="position: absolute;" width="0" height="0">
+                <filter id="remove-black-button-13" color-interpolation-filters="sRGB">
+                    <feColorMatrix type="matrix" values="1 0 0 0 0
+                0 1 0 0 0
+                0 0 1 0 0
+                -1 -1 -1 0 1" result="black-pixels"></feColorMatrix>
+                    <feComposite in="SourceGraphic" in2="black-pixels" operator="out"></feComposite>
+                </filter>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Settings Menu -->
+    <div id="settingsMenu" class="">
+        <div class="settingsMenuContent">
+            <div class="app" id="app" role="application" aria-label="Word Game home">
+                <!-- LEFT SIDEBAR (desktop) / top bar (mobile) -->
+                <aside class="sidebar top" aria-hidden="false">
+                    <div class="small-stack" role="group" aria-label="left actions">
+                        <button class="icon-btn" id="btnAchievements" aria-label="Achievements"><span
+                                aria-hidden="true">🏆</span><span class="sr-only">Achievements</span></button>
+                        <button class="icon-btn" id="btnSound" aria-label="Sound settings"><span
+                                aria-hidden="true">🔊</span><span class="sr-only">Sound settings</span></button>
+                        <button class="icon-btn" id="btnRewards" aria-label="Daily rewards"><span
+                                aria-hidden="true">🎁</span><span class="sr-only">Daily rewards</span></button>
+                    </div>
+                    <button id="menuToggleClose">X</button>
+                </aside>
+
+                <!-- CENTER -->
+                <main class="main" id="main" tabindex="-1">
+                    <header class="header" role="banner">
+
+                        <div class="balance" aria-live="polite" aria-atomic="true">
+                            <img src="./images/goldIcon.png" alt="" class="balanceIcon">
+                            <div class="coins" id="coinDisplay">0</div>
+                        </div>
+                    </header>
+
+                    <section class="cardHome" aria-labelledby="main-action">
+                        <div id="main-action" class="play-wrap">
+                            <a href="./main.html" class="play-btn" id="start" aria-label="Play game">
+                                ▶ Play
+                                <span class="coin-badge" style="display: none;" aria-hidden="true">+10</span>
+                            </a>
+
+                            <div class="info-row">
+                                <div style="text-align:center; display: none;">
+                                    <div style="font-weight:800;font-size:1.05rem" id="dailyStatus">Daily reward:
+                                        available</div>
+                                    <div class="muted" style="font-size:.9rem">Claim once every 24h</div>
+                                </div>
+
+                                <div style="text-align:center">
+                                    <div style="font-weight:800" id="highScore">High score: 0</div>
+                                    <div class="muted" style="font-size:.9rem">Your best result</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="actions" aria-hidden="false">
+                            <button class="btn secondary" style="display: none;" id="btnShop">Shop</button>
+                            <button class="btn" style="display: none;" id="btnChallenge">Daily Challenge</button>
+
+                        </div>
+                    </section>
+
+                    <footer class="footer">
+                        <div>© TM Entertainment</div>
+                    </footer>
+                </main>
+
+                <!-- RIGHT SIDEBAR (desktop) / bottom on mobile -->
+                <aside class="sidebar right" aria-hidden="false">
+                    <div class="small-stack" id="right-stack" role="group" aria-label="right actions">
+                        <button class="icon-btn" id="btnLeaderboard" aria-label="Leaderboard"><span
+                                aria-hidden="true">🏅</span><span class="sr-only">Leaderboard</span></button>
+                        <button class="icon-btn" id="settings" aria-label="Leaderboard"><span
+                                aria-hidden="true">⚙️</span><span class="sr-only">Leaderboard</span></button>
+                        <button class="icon-btn" id="btnShopIcon" aria-label="Shop"><span
+                                aria-hidden="true">🛒</span><span class="sr-only">Shop</span></button>
+                    </div>
+                    <button class="icon-btn" id="btnHelp" aria-label="Daily rewards"><span
+                            aria-hidden="true">❓</span><span class="sr-only">Daily rewards</span></button>
+                </aside>
+            </div>
+
+            <!-- MODALS -->
+
+            <!--SETTINGS-->
+            <div class="modalHome" id="menu-settings-section-wrapper" role="dialog" aria-modal="true"
+                aria-labelledby="setTitle">
+                <div class="menu-settings-section">
+                    <div class="kv">
+                        <label>Theme</label>
+                        <select id="themeSelect"></select>
+                    </div>
+                    <div class="kv">
+                        <label>Difficulty</label>
+                        <select id="difficulty">
+                            <option value="easy">Easy (90s)</option>
+                            <option value="medium" selected>Medium (60s)</option>
+                            <option value="hard">Hard (45s)</option>
+                        </select>
+                    </div>
+                    <div class="kv">
+                        <label>Grid size</label>
+                        <input id="gridSize" type="number" min="8" max="18" value="10" />
+                    </div>
+                    <div class="kv">
+                        <label>Words per level</label>
+                        <input id="wordsPerLevel" type="number" min="4" max="10" value="5" />
+                    </div>
+                    <button class="btn secondary" id="settings-close-btn" data-close>Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!--LEADERBOARD-->
+        <div class="modalHome" id="modalLeaderboard" role="dialog" aria-modal="true" aria-labelledby="ledTitle">
+            <div class="modal-card" role="document">
+                <div id="homeAchievements" style="margin-top:20px;">
+                    <h3>🏆 Your Achievements</h3>
+                    <div id="achvListHome"></div>
+                </div>
+                <button class="btn secondary" id="settings-close-btn" data-close>Close</button>
+            </div>
+        </div>
+
+        <!--HELP-->
+        <div class="modalHome" id="modalHelp" role="dialog" aria-modal="true" aria-labelledby="ledTitle">
+            <div class="modal-card" role="document">
+                <h2>Help</h2>
+                <button class="btn secondary" id="settings-close-btn" data-close>Close</button>
+            </div>
+        </div>
+
+
+        <!-- ACHIEVEMENTS -->
+        <div class="modalHome" id="modalAchievements" role="dialog" aria-modal="true" aria-labelledby="achTitle">
+            <div class="modal-card" role="document">
+                <h3 id="achTitle">Achievements</h3>
+                <div id="achievementsList">Loading...</div>
+                <div class="modal-actions">
+                    <button class="btn secondary" data-close>Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SOUND -->
+        <div class="modalHome" id="modalSound" role="dialog" aria-modal="true" aria-labelledby="soundTitle">
+            <div class="modal-card">
+                <h3 id="soundTitle">Sound Settings</h3>
+                <label style="display:flex;align-items:center;gap:10px">
+                    <input type="checkbox" id="soundToggle" /> Enable sound effects
+                </label>
+
+                <div class="modal-actions">
+                    <button class="btn secondary" data-close>Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- REWARDS -->
+        <div class="modalHome" id="modalRewards" role="dialog" aria-modal="true" aria-labelledby="rewTitle">
+            <div class="modal-card">
+                <h3 id="rewTitle">Daily Reward</h3>
+                <p id="rewardStatus">Checking...</p>
+                <div class="modal-actions">
+                    <button class="btn positive" id="claimReward">Claim 50 coins</button>
+                    <button class="btn secondary" data-close>Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SHOP -->
+        <div class="modalHome" id="modalShop" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
+            <div class="modal-card">
+                <h3 id="shopTitle">Coin Shop (mock)</h3>
+                <p class="muted">Purchases are mocked for demo. No real payment processed.</p>
+
+                <div class="shop-grid" id="shopGrid">
+                    <!-- JS will populate packages -->
+                </div>
+
+                <button class="btnWatchAd" id="btnWatchAd">Watch Ad (get coins)</button>
+
+                <div class="modal-actions">
+                    <button class="btn secondary" data-close>Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AD (simulated) -->
+        <div class="modal" id="modalAd" style="display: none;" role="dialog" aria-modal="true"
+            aria-labelledby="adTitle">
+            <div class="ad-overlay" role="document">
+                <h3 id="adTitle">Watch this short ad</h3>
+                <p class="muted">Ad will finish in a few seconds — stay until the end to get your reward.</p>
+                <div class="progress-bar" aria-hidden="true">
+                    <div class="progress-fill" id="adProgress"></div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <div id="adTimer">5</div>
+                    <div class="muted">seconds remaining</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn secondary" id="skipAd">Skip (no reward)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOASTS -->
+        <div class="toasts" id="toasts" aria-hidden="true"></div>
+    </div>
+    </div>
+
+    <div class="game" id="game">
+        <div id="hud" class="row">
+            <div class="row-content">
+                <!-- Power-up Refill Time Display -->
+                <div id="powerupRefillTime" style="font-size:14px; color:#fff; margin-top:5px;">
+                    Next refill in: <span id="refillTimer">--:--</span>
+                </div>
+
+                <div class="pill"> 🎖️ <strong id="level"></strong></div>
+                <div class="pill" style="display: none;"><strong id="score"></strong></div>
+                <div class="pill ratio" id="ration"><strong id="timer"></strong> </div>
+            </div>
+        </div>
+        <section class="game-board" id="game-board">
+            <div class="toast" id="toast">Level 01</div>
+
+            <div class="controls" style="display: none;">
+                <button id="pauseBtn">⏸️ Pause</button>
+                <button id="playBtn" style="display:none;">▶️ Play</button>
+            </div>
+            <div class="grid-wrap-game">
+                <div id="grid" class="card"
+                    style="grid-template-columns: repeat(10, var(--cell)); grid-template-rows: repeat(10, var(--cell));">
+                </div>
+            </div>
+            <div class="words-wrapper">
+                <div class="theme">
+                    <strong id="themeName"></strong>
+                </div>
+                <div id="words"></div>
+            </div>
+            <div id="powerups">
+                <div class="powerups-btn">
+                    <button class="btn cooldown" id="hintBtn">
+                        <i class="fas fa-lightbulb"></i>
+                        <span class="tag" id="hintLeft">3</span>
+                        <span class="cooldown-overlay"></span>
+                    </button>
+                    <button class="btn cooldown" id="timeBtn">
+                        <i class="fas fa-clock"></i>
+                        <span class="tag" id="timeLeft">3</span>
+                        <span class="cooldown-overlay"></span>
+                    </button>
+                    <button class="btn cooldown" id="autoBtn">
+                        <i class="fas fa-magic"></i>
+                        <span class="tag" id="autoLeft">2</span>
+                        <span class="cooldown-overlay"></span>
+                    </button>
+                </div>
+                <div class="reset-btn">
+                    <button class="btn" id="restartBtn">
+                        <i class="fas fa-arrows-rotate"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <section class="confirm_wrapper" id="confirm_wrapper">
+        <div class="confirmation">
+            <img src="./images/gameLogo.png" alt="" class="confirmation-header">
+
+            <h1 class>restart?</h1>
+            <img src="./images/background/bgclock.png" alt="" class="confirmation-img">
+            <div class="confirmation-buttons">
+                <button class="gameover-restart" id="restart-yes">YES</button>
+                <button class="gameover-close" id="restart-no">NO</button>
+                </button>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="gameOver_wrapper" id="gameOver_wrapper">
+        <div class="game-over">
+            <img src="./images/gameLogo.png" alt="" class="game-over-header">
+
+            <h1 class>Time's up</h1>
+            <img src="./images/background/bgclock.png" alt="" class="game-over-img">
+            <div class="game-over-buttons">
+                <button class="gameover-restart" id="gameover-restart">0</button>
+                <button class="gameover-close" id="gameover-close">X</button>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <div id="levelComplete_wrapper" class="overlay" aria-modal="true" role="dialog">
+        <div class="box">
+            <img src="./images/background/levelComplete.png" alt="" class="levelComplete-header">
+            <div class="stars" aria-label="Stars earned">
+                <svg class="star" id="star1" width="60" height="60" viewBox="0 0 24 24" fill="#ffd166"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 .587l3.668 7.431 8.167 1.19-5.917 5.766 1.397 8.147L12 18.897 4.685 23.121l1.397-8.147L.165 9.208l8.167-1.19z" />
+                </svg>
+                <svg class="star" id="star2" width="80" height="80" viewBox="0 0 24 24" fill="#ffd166"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 .587l3.668 7.431 8.167 1.19-5.917 5.766 1.397 8.147L12 18.897 4.685 23.121l1.397-8.147L.165 9.208l8.167-1.19z" />
+                </svg>
+                <svg class="star" id="star3" width="60" height="60" viewBox="0 0 24 24" fill="#ffd166"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path
+                        d="M12 .587l3.668 7.431 8.167 1.19-5.917 5.766 1.397 8.147L12 18.897 4.685 23.121l1.397-8.147L.165 9.208l8.167-1.19z" />
+                </svg>
+            </div>
+            <p class="level-line">LEVEL <span id="levelComplete_level">0</span> FINISHED!</p>
+            <div class="metrics">
+                <div class="metric">
+                    <h4>Score</h4>
+                    <div class="big" id="levelComplete_score">0</div>
+                </div>
+                <div class="metric">
+                    <h4>Time Left</h4>
+                    <div class="big" id="levelComplete_time">0s</div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="nextBtn" class="primary" style="width:auto; min-width:120px;">NEXT ▶</button>
+                <button id="replayBtn" class="ghost" style="width:auto; min-width: 120px">REPLAY</button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script src="./index.js"></script>
+    <script src="./sideMenu.js"></script>
+</body>
+
+</html>
