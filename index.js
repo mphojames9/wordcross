@@ -55,7 +55,7 @@ if (menuToggleClose && settingsMenu) {
 
 
   // 🎨 Word highlight colors
-  const highlightColors = ["#ff6666", "#66b3ff", "#99ff99", "#ffcc99", "#c299ff", "#ff99cc"];
+  const highlightColors = ["#ff3939ff", "#0BA0E0", "#14F10D", "#030502", "#C00CE1", "#ff9d2dff"];
   let colorIndex = 0;
   const wordColors = {}; // store color per word
 
@@ -602,7 +602,7 @@ if (menuToggleClose && settingsMenu) {
         clearInterval(state.timer);
         const gov = $("#gameOver_wrapper");
         if (gov) gov.style.display = "flex";
-        const gb = $("#game-board");
+        const gb = $(".game");
         if (gb) gb.classList.add("blurred");
         endLevel(false);
       }
@@ -619,7 +619,7 @@ if (menuToggleClose && settingsMenu) {
     const plb = $("#playBtn");
     if (pb) pb.style.display = "none";
     if (plb) plb.style.display = "inline-block";
-    const gb = $("#game-board");
+    const gb = $(".game");
     if (gb) gb.classList.add("blurred");
   }
 
@@ -631,7 +631,7 @@ if (menuToggleClose && settingsMenu) {
     const plb = $("#playBtn");
     if (pb) pb.style.display = "inline-block";
     if (plb) plb.style.display = "none";
-    const gb = $("#game-board");
+    const gb = $(".game");
     if (gb) gb.classList.remove("blurred");
   }
 
@@ -866,7 +866,7 @@ if (menuToggleClose && settingsMenu) {
     state.powerups.hint--;
     state.usedHints++;
     const hL = $("#hintLeft");
-    if (hL) hL.textContent = state.powerups.hint;
+    if (hL) hL.textContent = `${state.powerups.hint}`;
     flash(cell, 5);
   }
 
@@ -937,7 +937,7 @@ if (menuToggleClose && settingsMenu) {
       confetti();
 
       const wrapper = $("#levelComplete_wrapper");
-      const gb = $("#game-board");
+      const gb = $(".game");
       if (gb) gb.classList.add("blurred");
       if (wrapper) wrapper.style.display = "flex";
 
@@ -1117,7 +1117,7 @@ if (menuToggleClose && settingsMenu) {
 
   on("#restartBtn", "click", () => {
     const cwe = document.getElementById('confirm_wrapper');
-    const gbe = document.getElementById('game-board');
+    const gbe = document.querySelector(".game");
     if (cwe) {
       cwe.style.display = "flex";
     }
@@ -1133,7 +1133,7 @@ if (menuToggleClose && settingsMenu) {
   on("#restart-yes", "click", () => {
     setTimeout(() => init(false), 100);
     const cw = document.getElementById("confirm_wrapper");
-    const gb = document.getElementById("game-board");
+    const gb = document.querySelector(".game");
     if (cw) cw.style.display = "none";
     if (gb) gb.classList.remove("blurred");
     setTimeout(() => resumeGame(), 1000);
@@ -1146,14 +1146,14 @@ if (menuToggleClose && settingsMenu) {
   on("#gameover-restart", "click", () => {
     setTimeout(() => init(false), 100);
     const w = document.getElementById("gameOver_wrapper");
-    const gb = document.getElementById("game-board");
+    const gb = document.querySelector(".game");
     if (w) w.style.display = "none";
     if (gb) gb.classList.remove("blurred");
   });
 
   function confirmSec() {
     const cw = document.getElementById("confirm_wrapper");
-    const gb = document.getElementById("game-board");
+    const gb = document.querySelector(".game")
     if (cw) cw.style.display = "none";
     if (gb) gb.classList.remove("blurred");
   }
@@ -1176,13 +1176,15 @@ if (menuToggleClose && settingsMenu) {
     modal.style.justifyContent = "center";
     modal.style.alignItems = "center";
     modal.innerHTML = `
-    <div style="background:#222; padding:20px; border-radius:12px; text-align:center; color:white; max-width:300px; width:90%;">
+    <div class="powerUptopUp">
       <h3>Out of Power-ups ⚡</h3>
-      <p>You have <span id="powerupModalCoins">0</span> 🪙</p>
+                    <img src="./images/goldIcon.png" alt="" class="coinImgIcoin">
+      <p>You have <span id="powerupModalCoins">0</span> </p>
       <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
-        <button id="buyWithCoins">Buy 1 (<span id="buyPrice">30</span> 🪙)</button>
-        <button id="watchAdBtn">Watch Ad 🎥</button>
-        <button id="closePowerupModal">Cancel</button>
+                    <img src="./images/goldIcon.png" alt="" class="coinImgIcoin">
+        <button class="buyPowerUp" id="buyWithCoins">Buy 1 (<span id="buyPrice">30</span> </button>
+        <button class="buyPowerUp" id="watchAdBtn">Watch Ad 🎥</button>
+        <button class="buyPowerUp" id="closePowerupModal">Cancel</button>
       </div>
     </div>
   `;
@@ -1210,17 +1212,63 @@ if (menuToggleClose && settingsMenu) {
     };
 
     // Watch ad
-    document.getElementById("watchAdBtn").onclick = () => {
-      toast("🎥 Watching ad...");
-      setTimeout(() => {
-        toast("Thanks for watching! +1 " + currentPowerupType);
-        state.powerups[currentPowerupType]++;
-        STORAGE.saveProgress("ad-reward-" + currentPowerupType);
-        updateHUD();
-        modal.style.display = "none";
-        resumeGame();
-      }, 4000); // simulate 4s ad
-    };
+const watchAdBtn = document.getElementById("watchAdBtn");
+const pua = document.querySelector(".pua");
+const adBar = document.getElementById("adBar");
+const adCountdown = document.getElementById("adCountdown");
+const powerupModal = document.getElementById("powerupModal");
+
+watchAdBtn.addEventListener("click", () => {
+  const INITIAL_COUNT = 5;
+  if (watchAdBtn.disabled) return; // prevent double clicks
+  watchAdBtn.disabled = true;
+
+  pua.classList.add("open");
+  adBar.classList.add("widthSimulation");
+  adCountdown.textContent = `${INITIAL_COUNT}s remaining`;
+
+  let count = INITIAL_COUNT;
+  let adFinished = false;
+
+  const finishAd = () => {
+    if (adFinished) return;
+    adFinished = true;
+
+    clearInterval(intervalId);
+    clearTimeout(timeoutId);
+
+    // reward + save + UI cleanup
+    state.powerups[currentPowerupType]++;
+    STORAGE.saveProgress("ad-reward-" + currentPowerupType);
+    updateHUD();
+
+    pua.classList.remove("open");
+    adBar.classList.remove("widthSimulation");
+    powerupModal.style.display = "none";
+
+    // reset UI for next time
+    adCountdown.textContent = `${INITIAL_COUNT}s remaining`;
+    watchAdBtn.disabled = false;
+
+    resumeGame();
+  };
+
+  const intervalId = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      count = 0;
+      adCountdown.textContent = `${count}s remaining`;
+      finishAd();
+    } else {
+      adCountdown.textContent = `${count}s remaining`;
+    }
+  }, 1000);
+
+  const timeoutId = setTimeout(() => {
+    finishAd(); // safety: ensure finish runs once
+  }, INITIAL_COUNT * 1000);
+});
+
   })();
 
   // --- Prices for each power-up ---
@@ -1258,7 +1306,8 @@ if (menuToggleClose && settingsMenu) {
     modal.innerHTML = `
     <div style="background:#222; padding:20px; border-radius:12px; text-align:center; color:white; max-width:300px; width:90%;">
       <h3>Out of Power-ups ⚡</h3>
-      <p>You have <span id="powerupModalCoins">0</span> 🪙</p>
+                    <img src="./images/goldIcon.png" alt="" class="coinImgIcoin">
+      <p>You have <span id="powerupModalCoins">0</span> </p>
       <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
         <button id="buyWithCoins">Buy 1 (<span id="buyPrice">30</span> 🪙)</button>
         <button id="watchAdBtn">Watch Ad 🎥</button>
@@ -1284,18 +1333,6 @@ if (menuToggleClose && settingsMenu) {
       } else {
         toast("Not enough coins!");
       }
-    };
-
-    // Watch Ad
-    document.getElementById("watchAdBtn").onclick = () => {
-      toast("🎥 Watching ad...");
-      setTimeout(() => {
-        toast("Thanks for watching! +1 " + currentPowerupType);
-        state.powerups[currentPowerupType]++;
-        STORAGE.saveProgress("ad-reward-" + currentPowerupType);
-        updateHUD();
-        modal.style.display = "none";
-      }, 4000); // simulate ad duration
     };
   }
 
@@ -1344,7 +1381,7 @@ if (menuToggleClose && settingsMenu) {
   // Next & Replay buttons on Level Complete
   on("#nextBtn", "click", () => {
     const wrapper = document.getElementById("levelComplete_wrapper");
-    const gb = document.getElementById("game-board");
+    const gb = document.querySelector(".game");
     if (wrapper) wrapper.style.display = "none";
     if (gb) gb.classList.remove("blurred");
     advanceLevel();
@@ -1352,7 +1389,7 @@ if (menuToggleClose && settingsMenu) {
 
   on("#replayBtn", "click", () => {
     const wrapper = document.getElementById("levelComplete_wrapper");
-    const gb = document.getElementById("game-board");
+    const gb = document.querySelector(".game");
     if (wrapper) wrapper.style.display = "none";
     if (gb) gb.classList.remove("blurred");
     restartLevel();
@@ -1452,7 +1489,6 @@ if (menuToggleClose && settingsMenu) {
       STORAGE.saveProgress("daily-reward");
       updateHUD();
 
-      toast(`🎁 Daily Reward! +${coinReward} coins & +${hintReward} Hint`);
       showDailyRewardModal(coinReward, hintReward);
 
 
@@ -1477,9 +1513,9 @@ if (menuToggleClose && settingsMenu) {
     });
 
     modal.innerHTML = `
-    <div style="background:#222; color:white; padding:20px; border-radius:12px; text-align:center; max-width:300px;">
-      <h3>🎁 Daily Reward!</h3>
-      <p>You earned +${coins} coins & +${hints} hint</p>
+    <div class="dailyRewards">
+      <h2 style="margin: 10px;">🎁 Daily Reward!</h2>
+            <p>You earned +${coins}  <img src="./images/goldIcon.png" alt="" class="coinImgIcoin"> & +${hints} hint</p>
       <button id="closeDailyReward">OK</button>
     </div>
   `;
@@ -2010,7 +2046,7 @@ checkAndRefillPowerups();
 // =============================
 // OPEN SPIN WHEEL
 // =============================
-function openSpinWheel() {
+function openSpinWheel() { 
   const now = Date.now();
   const lastSpin = parseInt(localStorage.getItem("lastSpin") || "0");
 
@@ -2030,36 +2066,6 @@ function openSpinWheel() {
     { text: "+100 coins", coins: 100, color: "gray" },
   ];
 
-  const anglePerSlice = 360 / rewards.length;
-
-  // Build wheel HTML
-  let slicesHTML = "";
-  rewards.forEach((reward, i) => {
-    slicesHTML += `
-      <div style="
-        position:absolute; 
-        width:50%; 
-        height:50%; 
-        top:50%; 
-        left:50%; 
-        transform-origin:0% 0%; 
-        transform:rotate(${i * anglePerSlice}deg) skewY(${90 - anglePerSlice}deg);
-        background:${reward.color};
-      "></div>
-      <div style="
-        position:absolute;
-        width:100%;
-        text-align:center;
-        top:50%;
-        left:0;
-        transform:rotate(${i * anglePerSlice + anglePerSlice / 2}deg) translateY(-80px);
-        font-size:12px;
-      ">
-        ${reward.text}
-      </div>
-    `;
-  });
-
   const modal = document.createElement("div");
   Object.assign(modal.style, {
     position: "fixed",
@@ -2072,10 +2078,10 @@ function openSpinWheel() {
   modal.innerHTML = `
     <div style="background:#222; padding:20px; border-radius:12px; color:white; text-align:center; max-width:350px;">
       <h3>🎡 Spin the Wheel!</h3>
-      <div style="position:relative; width:200px; height:200px; margin:20px auto; border-radius:50%; overflow:hidden; border:5px solid gold;">
-        <div id="wheel" style="width:100%; height:100%; border-radius:50%; transition: transform 4s ease-out; position:relative;">
-          ${slicesHTML}
-        </div>
+      <div style="position:relative; width:250px; height:250px; margin:20px auto;">
+        <img id="wheel" 
+             src="./images/background/wheel.png" 
+             style="width:100%; height:100%; border-radius:50%; transition: transform 4s ease-out;" />
         <div style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:24px;">🔻</div>
       </div>
       <div id="wheelResult" style="margin:10px; font-size:18px;">Ready to spin!</div>
@@ -2103,6 +2109,7 @@ function openSpinWheel() {
     });
   });
 }
+
 
 // =============================
 // AD SIMULATION
@@ -2151,16 +2158,26 @@ function playAdSimulation(callback) {
 // =============================
 // SPIN LOGIC
 // =============================
+// =============================
+// SPIN LOGIC
+// =============================
 function spinReward(modal, rewards) {
   const wheel = modal.querySelector("#wheel");
   const spinNowBtn = modal.querySelector("#spinNowBtn");
 
   spinNowBtn.disabled = true;
 
-  const slice = Math.floor(Math.random() * rewards.length);
+  const slice = Math.floor(Math.random() * rewards.length); // Pick reward index
   const anglePerSlice = 360 / rewards.length;
-  const rotation = 5 * 360 + slice * anglePerSlice + (anglePerSlice / 2);
 
+  // Pointer is at 0° (top). Need to rotate so chosen slice aligns with it.
+  // We rotate in reverse (negative) to simulate clockwise spin visually.
+  const stopAngle = 360 - (slice * anglePerSlice + anglePerSlice / 2);
+
+  // Add multiple full spins for drama
+  const rotation = 5 * 360 + stopAngle;
+
+  // Reset instantly, then animate
   wheel.style.transition = "none";
   wheel.style.transform = `rotate(0deg)`;
   setTimeout(() => {
@@ -2168,6 +2185,7 @@ function spinReward(modal, rewards) {
     wheel.style.transform = `rotate(${rotation}deg)`;
   }, 50);
 
+  // After spin completes
   setTimeout(() => {
     const reward = rewards[slice];
     const resultEl = modal.querySelector("#wheelResult");
@@ -2177,7 +2195,7 @@ function spinReward(modal, rewards) {
     if (reward.hint) addPowerup("hint", reward.hint);
     if (reward.auto) addPowerup("auto", reward.auto);
 
-    // Check if it's an ad spin or daily spin
+    // Track daily or ad spin
     let adSpinCount = parseInt(localStorage.getItem("adSpinCount") || "0");
     if (adSpinCount > 0) {
       localStorage.setItem("adSpinCount", adSpinCount - 1); // consume one ad spin
@@ -2186,10 +2204,12 @@ function spinReward(modal, rewards) {
     }
 
     spinNowBtn.disabled = true;
-    spinNowBtn.textContent = "⏳ Done!";
+    spinNowBtn.textContent = "⏳";
+    spinNowBtn.style.display = "none";
     updateSidebarButton();
   }, 4000);
 }
+
 
 // =============================
 // SIDEBAR BUTTON
@@ -2199,8 +2219,7 @@ function updateSidebarButton() {
   if (!spinBtn) {
     spinBtn = document.createElement("button");
     spinBtn.id = "spinWheelBtn";
-    spinBtn.textContent = "🎡 Spin Wheel";
-    spinBtn.style.marginLeft = "10px";
+    spinBtn.textContent = "🎡";
     spinBtn.onclick = openSpinWheel;
 
     const sidebar = document.querySelector("#sidebar-top") || document.body;
@@ -2214,18 +2233,17 @@ function updateSidebarButton() {
 
   if (adSpinCount > 0) {
     spinBtn.disabled = false;
-    spinBtn.textContent = `🎡 Spin (Ad x${adSpinCount})`;
     return;
   }
 
   if (diff < 86400000) {
     spinBtn.disabled = true;
     let remaining = Math.ceil((86400000 - diff) / 1000);
-    spinBtn.textContent = `⏳ Next spin in ${formatTime(remaining)}`;
+    $('#nextSpin').textContent = `⏳ Next spin in ${formatTime(remaining)}`;
     setTimeout(updateSidebarButton, 1000);
   } else {
     spinBtn.disabled = false;
-    spinBtn.textContent = "🎡 Spin Wheel";
+    spinBtn.textContent = "🎡";
   }
 }
 

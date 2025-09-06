@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6068689040743381"
-     crossorigin="anonymous"></script>
+        crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -36,6 +36,16 @@
             </svg>
         </button>
     </div>
+
+            <!-- AD (simulated) -->
+        <div class="pua">
+            <h3>📺 Your ad is playing...</h3>
+            <div id="adProgress"
+                style="width:80%; height:20px; background:#333; border-radius:10px; margin-top:20px; overflow:hidden;">
+                <div id="adBar"></div>
+            </div>
+            <p id="adCountdown">5s remaining</p>
+        </div>
 
     <!-- Settings Menu -->
     <div id="settingsMenu" class="">
@@ -80,7 +90,7 @@
 
                                 <div style="text-align:center">
                                     <div style="font-weight:800" id="highScore">High score: 0</div>
-                                    <div class="muted" style="font-size:.9rem">Your best result</div>
+                                    <div class="muted" id="nextSpin" style="font-size:.9rem"></div>
                                 </div>
                             </div>
                         </div>
@@ -203,8 +213,8 @@
         <!-- SHOP -->
         <div class="modalHome" id="modalShop" role="dialog" aria-modal="true" aria-labelledby="shopTitle">
             <div class="modal-card">
-                <h3 id="shopTitle">Coin Shop (mock)</h3>
-                <p class="muted">Purchases are mocked for demo. No real payment processed.</p>
+                <h3 id="shopTitle">Coin Shop</h3>
+                <p class="muted"></p>
 
                 <div class="shop-grid" id="shopGrid">
                     <!-- JS will populate packages -->
@@ -219,11 +229,10 @@
         </div>
 
         <!-- AD (simulated) -->
-        <div class="modalAd" id="modalAd" role="dialog" aria-modal="true"
-            aria-labelledby="adTitle">
+        <div class="modalAd" id="modalAd" role="dialog" aria-modal="true" aria-labelledby="adTitle">
             <div class="ad-overlay" role="document">
-                <h3 id="adTitle">Watch this short ad</h3>
-                <p class="muted">Ad will finish in a few seconds — stay until the end to get your reward.</p>
+                <h3 style="margin: 30px;" class="muted">Ad will finish in a few seconds — stay until the end to get your
+                    reward.</h3>
                 <div class="progress-bar" aria-hidden="true">
                     <div class="progress-fill" id="adProgress"></div>
                 </div>
@@ -237,6 +246,7 @@
             </div>
         </div>
 
+
         <!-- TOASTS -->
         <div class="toasts" id="toasts" aria-hidden="true"></div>
     </div>
@@ -245,18 +255,13 @@
     <div class="game" id="game">
         <div id="hud" class="row">
             <div class="row-content">
-                <!-- Power-up Refill Time Display -->
-                <div id="powerupRefillTime" style="font-size:14px; color:#fff; margin-top:5px;">
-                    Next refill in: <span id="refillTimer">--:--</span>
-                </div>
-
-                <div class="pill"> 🎖️ <strong id="level"></strong></div>
+                <div class="pill">LVL<strong id="level"></strong></div>
                 <div class="pill" style="display: none;"><strong id="score"></strong></div>
                 <div class="pill ratio" id="ration"><strong id="timer"></strong> </div>
             </div>
         </div>
         <section class="game-board" id="game-board">
-            <div class="toast" id="toast">Level 01</div>
+            <div class="toast animateToast " id="toast">Level 01</div>
 
             <div class="controls" style="display: none;">
                 <button id="pauseBtn">⏸️ Pause</button>
@@ -276,16 +281,19 @@
             <div id="powerups">
                 <div class="powerups-btn">
                     <button class="btn cooldown" id="hintBtn">
+                        <p class="lightning">⚡</p>
                         <i class="fas fa-lightbulb"></i>
                         <span class="tag" id="hintLeft">3</span>
                         <span class="cooldown-overlay"></span>
                     </button>
                     <button class="btn cooldown" id="timeBtn">
+                        <p class="lightning">⚡</p>
                         <i class="fas fa-clock"></i>
                         <span class="tag" id="timeLeft">3</span>
                         <span class="cooldown-overlay"></span>
                     </button>
                     <button class="btn cooldown" id="autoBtn">
+                        <p class="lightning">⚡</p>
                         <i class="fas fa-magic"></i>
                         <span class="tag" id="autoLeft">2</span>
                         <span class="cooldown-overlay"></span>

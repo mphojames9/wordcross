@@ -14,8 +14,8 @@ function toast(message, time = 2800){
 
 /* ---------- Persistent State ---------- */
 function save(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
-function load(key, def){ const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; }
-
+function load(key, def){ const v = localStorage.getItem(key); return v ? JSON.parse(v) : def;
+ }
 /* ---------- App Logic ---------- */
 const DEFAULTS = {
   coins: 0,
@@ -54,7 +54,8 @@ function updateUI(){
   animateCounter(coinDisplay, Number(coinDisplay.textContent || 0), coins);
   // update achievements/highscore displays
   const ach = load('achievements', DEFAULTS.achievements);
-  $('#highScore').textContent = 'High score: ' + (ach.highScore || 0);
+  const scoreDis = load('ws_progress');
+  $('#highScore').textContent = 'High score: ' + (scoreDis.score || 0);
   // reward status text
   const last = load('lastReward', null);
   const today = new Date().toDateString();
@@ -90,6 +91,7 @@ function claimReward(){
 
 /* achievements */
 function getAchievements(){ return load('achievements', DEFAULTS.achievements); }
+function getProgress(){ return load('ws_progress'); }
 function saveAchievements(obj){ const current = getAchievements(); save('achievements', {...current, ...obj}); }
 
 /* Modal utility */
@@ -138,7 +140,7 @@ function renderShop(){
     const card = document.createElement('div');
     card.className = 'pkg';
     card.innerHTML = `
-      <div class="amount">${p.coins} 🪙</div>
+      <div class="amount">${p.coins} <img src="./images/goldIcon.png" alt="" class="coinImgIcoin">
       <div class="price">${p.priceLabel}</div>
       <div style="margin-top:8px">
         <button class="btn" data-buy="${p.id}">Buy</button>
@@ -170,9 +172,10 @@ function startAdSimulation(durationSec = 5, reward = 25){
   // open ad modal
   openModal('modalAd');
   const progress = $('#adProgress');
+  console.log(progress)
   const adTimer = $('#adTimer');
   let elapsed = 0;
-  progress.style.width = '0%';
+  $(".progress-fill").classList.add("widthSimulation");
   adTimer.textContent = durationSec.toString();
 
   adTimerHandle && clearInterval(adTimerHandle);
@@ -183,7 +186,8 @@ function startAdSimulation(durationSec = 5, reward = 25){
     const left = Math.max(0, durationSec - elapsed);
     adTimer.textContent = String(left);
     if(elapsed >= durationSec){
-      clearInterval(adTimerHandle);
+      clearInterval(adTimerHandle)
+      $(".progress-fill").classList.remove("widthSimulation");
       // award reward
       addCoins(reward);
       toast(`🎉 Rewarded ad complete — +${reward} coins`);
@@ -210,11 +214,12 @@ function initiate(){
   // Achievements modal
   $('#btnAchievements').addEventListener('click', () => {
     const a = getAchievements();
+    const b = getProgress();
     $('#achievementsList').innerHTML = `
       <div style="margin-bottom:8px">🎮 Games Played: <strong>${a.gamesPlayed}</strong></div>
       <div style="margin-bottom:8px">🏆 Wins: <strong>${a.wins}</strong></div>
-      <div style="margin-bottom:8px">⭐ High Score: <strong>${a.highScore}</strong></div>
-      <div style="margin-top:6px" class="muted">Coins: ${getCoins()}</div>
+      <div style="margin-bottom:8px">⭐ High Score: <strong>${b.score}</strong></div>
+      <div style="margin-top:6px" class="muted"> <img src="./images/goldIcon.png" alt="" class="coinImgIcoin"><strong> ${getCoins()}</strong></div>
     `;
     openModal('modalAchievements');
   });
