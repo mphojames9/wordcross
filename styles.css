@@ -6,6 +6,7 @@
 
 html {
     height: 100%;
+        background-color: #dfe0e2;
 }
 
 /* ===== animation.css ===== */
@@ -98,7 +99,7 @@ html {
     }
 }
 
-.blurred {
+blurred {
     filter: blur(4px);
 }
 
@@ -277,7 +278,7 @@ html {
 
 .homeScreen {
     position: fixed;
-    height: 100vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -286,8 +287,6 @@ html {
     color: white;
     background: url("./images/background.png") no-repeat center center;
     background-size: cover;
-    /* fills the screen without distortion */
-    height: 100vh;
     max-width: 1000px;
     width: 100vw;
     overflow: hidden;
@@ -598,7 +597,7 @@ button[disabled] {
     inset: 0;
     z-index: 10;
     background: rgba(4, 8, 20, 0.781);
-    backdrop-filter: blur(6px);
+    /*backdrop-filter: blur(6px);*/
     justify-content: center;
     align-items: center;
     padding: 18px;
@@ -758,7 +757,7 @@ button[disabled] {
 
 
 /* Blurred state */
-.blurred {
+blurred {
     filter: blur(2px) saturate(.8);
     pointer-events: none;
 }
@@ -1058,9 +1057,16 @@ a {
     padding: 18px;
 }
 
+.modalAd {
+    position: absolute;
+    display: none;
+}
+
 .open {
     display: flex
 }
+
+
 
 .modal-card {
     width: 100%;
@@ -1176,6 +1182,7 @@ a {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
     transform-origin: right bottom;
     animation: toast-in .22s ease;
+        z-index: 11000;
 }
 
 .sidebar right {
@@ -1260,8 +1267,6 @@ body {
     align-items: center;
     height: 100%;
     position: relative;
-    background-color: #dfe0e2;
-    box-shadow: rgba(0, 0, 0, 0.17) 0px -23px 25px 0px inset, rgba(0, 0, 0, 0.15) 0px -36px 30px 0px inset, rgba(0, 0, 0, 0.1) 0px -20px 40px 0px inset, rgba(0, 0, 0, 0.06) 0px 2px 1px, rgba(0, 0, 0, 0.09) 0px 4px 2px, rgba(0, 0, 0, 0.09) 0px 8px 4px, rgba(0, 0, 0, 0.09) 0px 16px 8px, rgba(0, 0, 0, 0.09) 0px 32px 16px;
 }
 
 /* Home section */
@@ -1938,3 +1943,4 @@ a {
 a:hover {
     color: var(--accent5);
 }
+

@@ -53,6 +53,21 @@ if (menuToggleClose && settingsMenu) {
     ]
   };
 
+
+  // 🎨 Word highlight colors
+  const highlightColors = ["#ff6666", "#66b3ff", "#99ff99", "#ffcc99", "#c299ff", "#ff99cc"];
+  let colorIndex = 0;
+  const wordColors = {}; // store color per word
+
+  function getWordColor(word) {
+    if (!wordColors[word]) {
+      wordColors[word] = highlightColors[colorIndex % highlightColors.length];
+      colorIndex++;
+    }
+    return wordColors[word];
+  }
+
+
   const DIRS = [
     [1, 0],
     [0, 1],
@@ -81,6 +96,7 @@ if (menuToggleClose && settingsMenu) {
     selectedCells: [],
     usedHints: 0,
     powerups: { hint: 3, time: 3, auto: 2 },
+    streak: 0, // 🔥 track win streak
     dailyMode: false,
     rngSeed: null,
     _paused: false,
@@ -95,6 +111,44 @@ if (menuToggleClose && settingsMenu) {
     _autosaveId: null,
     _saveEveryMs: 15000, // 15s periodic background save
   };
+
+  function animateCoinGain(amount) {
+    const coinHUD = document.querySelector("#coins"); // your coin counter element
+    if (!coinHUD) return;
+
+    const rect = coinHUD.getBoundingClientRect();
+
+    // Create floating text
+    const float = document.createElement("div");
+    float.textContent = `+${amount} 🪙`;
+    Object.assign(float.style, {
+      position: "fixed",
+      left: rect.left + rect.width / 2 + "px",
+      top: rect.top + "px",
+      transform: "translate(-50%, 0)",
+      color: "gold",
+      fontSize: "20px",
+      fontWeight: "bold",
+      textShadow: "0 0 6px black",
+      opacity: "1",
+      transition: "all 1s ease-out",
+      zIndex: "10000",
+      pointerEvents: "none",
+    });
+
+    document.body.appendChild(float);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      float.style.top = rect.top - 40 + "px"; // move up
+      float.style.opacity = "0"; // fade
+    });
+
+    // Remove after animation
+    setTimeout(() => {
+      float.remove();
+    }, 1000);
+  }
 
   /* ===========================
      Utilities
@@ -176,24 +230,23 @@ if (menuToggleClose && settingsMenu) {
         usedHints: state.usedHints,
         dailyMode: state.dailyMode,
         rngSeed: state.rngSeed,
-        coins: state.coins ?? 0,
         // UX helpers
         savedAt: new Date().toISOString(),
         reason,
         // persist last refill timestamp if present
         lastRefill: state._lastRefill || null,
+        coins: state.coins ?? 0,
       };
       try {
         localStorage.setItem(STORAGE_KEYS.progress, JSON.stringify(payload));
+        localStorage.setItem("coins", String(state.coins ?? 0));
         if (reason === "level-complete" || reason === "manual") {
-          toast("Progress saved ✅");
         }
       } catch (e) {
         console.error("Failed saving progress:", e);
         toast("Could not save progress (storage full?)");
       }
     },
-
 
     // Returns true if loaded, false otherwise
     loadProgress() {
@@ -204,7 +257,7 @@ if (menuToggleClose && settingsMenu) {
         if (typeof p !== "object" || p === null) return false;
         if (!Number.isInteger(p.themeIndex)) return false;
         if (!Number.isInteger(p.level)) return false;
-
+        if (typeof state.streak === "undefined") state.streak = 0;
         state.themeIndex = clamp(p.themeIndex, 0, state.themeKeys.length - 1);
         state.level = Math.max(0, p.level);
         state.size = clamp(p.size ?? state.size, 8, 20);
@@ -216,8 +269,9 @@ if (menuToggleClose && settingsMenu) {
         state.dailyMode = !!p.dailyMode;
         state.rngSeed = p.rngSeed ?? null;
         state._lastRefill = p.lastRefill || state._lastRefill || Date.now();
-        // Load coins from ws_coins (preferred) or fallback to saved progress
-        state.coins = parseInt(localStorage.getItem("ws_coins") || p.coins || 0, 10);
+
+        // ✅ Sync coins from ws_coins or fallback to progress
+        state.coins = parseInt(localStorage.getItem("coins") || p.coins || 0, 10);
 
 
         const diff = $("#difficulty");
@@ -235,6 +289,8 @@ if (menuToggleClose && settingsMenu) {
         console.warn("Failed to parse progress:", e);
         return false;
       }
+
+
     },
 
     hasProgress() {
@@ -295,10 +351,6 @@ if (menuToggleClose && settingsMenu) {
       },
     },
   };
-
-  // Make STORAGE available globally so home screen can display achievements
-  window._wsStorage = STORAGE;
-
 
   /* ===========================
      Achievements
@@ -735,19 +787,32 @@ if (menuToggleClose && settingsMenu) {
     });
   }
 
-  // NEW: mark found word cells permanently (fixes ReferenceError)
-  function markWordCoords(coords) {
+  function markWordCoords(coords, word) {
     if (!Array.isArray(coords)) return;
+
+    const color = getWordColor(word);
+
     coords.forEach(({ r, c }) => {
       const cell = getCellAt(r, c);
       if (cell) {
-        cell.classList.add("correct");
         cell.classList.remove("highlight");
         cell.dataset.found = "1";
         cell.setAttribute("aria-pressed", "true");
+
+        // Apply unique background color
+        cell.style.backgroundColor = color;
+        cell.style.color = "white"; // keep letters readable
       }
     });
+
+    // also color the word in the word list
+    const tag = document.querySelector(`#words [data-word="${word}"]`);
+    if (tag) {
+      tag.style.color = color;
+      tag.style.fontWeight = "bold";
+    }
   }
+
 
   function commitSelection() {
     const candidate = selectedWord();
@@ -758,10 +823,11 @@ if (menuToggleClose && settingsMenu) {
     const word = state.words.includes(candidate) ? candidate : candidate.split("").reverse().join("");
     const coords = state.placed[word];
     if (coords) {
-      markWordCoords(coords);
+      markWordCoords(coords, word);
     } else {
       $$(".highlight").forEach((c) => c.classList.add("correct"));
     }
+
 
     const tag =
       $(`#words [data-word="${word}"]`) ||
@@ -821,7 +887,7 @@ if (menuToggleClose && settingsMenu) {
     const w = remaining[0].dataset.word;
     const coords = state.placed[w] || state.placed[w.split("").reverse().join("")];
     if (coords) {
-      markWordCoords(coords);
+      markWordCoords(coords, w);
       const tag = $(`#words [data-word="${w}"]`);
       if (tag && !tag.classList.contains("found")) {
         tag.classList.add("found");
@@ -863,12 +929,30 @@ if (menuToggleClose && settingsMenu) {
       state._levelsCleared = (state._levelsCleared || 0) + 1;
       const stars = calcStars();
       state._starsLast = stars;
+      const reward = 10 + (state.level * 1, 1)
+      state.coins += reward;
+      const baseReward = 20;
+      state.coins += baseReward;
+      animateCoinGain(reward);
       confetti();
 
       const wrapper = $("#levelComplete_wrapper");
       const gb = $("#game-board");
       if (gb) gb.classList.add("blurred");
       if (wrapper) wrapper.style.display = "flex";
+
+      // --- Streak Bonus ---
+      state.streak++;
+      const streakBonus = state.streak * 5;
+      state.coins += streakBonus;
+
+      STORAGE.saveProgress("level-complete");
+      updateHUD();
+
+      toast(`🎉 Level complete! +${baseReward} coins`);
+      if (streakBonus > 0) {
+        toast(`🔥 Streak x${state.streak}! +${streakBonus} bonus coins`);
+      }
 
       animateLevelComplete({
         level: state.level + 1,
@@ -883,6 +967,9 @@ if (menuToggleClose && settingsMenu) {
     } else {
       state._wonLast = false;
       STORAGE.saveProgress("game-over");
+      state.streak = 0;
+      STORAGE.saveProgress("level-fail");
+      toast("❌ Level failed. Streak reset.");
     }
   }
 
@@ -1071,24 +1158,188 @@ if (menuToggleClose && settingsMenu) {
     if (gb) gb.classList.remove("blurred");
   }
 
-  // Power-up buttons
+
+
+
+  (function setupPowerupModal() {
+    if (document.getElementById("powerupModal")) return; // prevent duplicates
+
+    const modal = document.createElement("div");
+    modal.id = "powerupModal";
+    modal.style.display = "none";
+    modal.style.position = "fixed";
+    modal.style.top = "0";
+    modal.style.left = "0";
+    modal.style.width = "100%";
+    modal.style.height = "100%";
+    modal.style.background = "rgba(0,0,0,0.6)";
+    modal.style.justifyContent = "center";
+    modal.style.alignItems = "center";
+    modal.innerHTML = `
+    <div style="background:#222; padding:20px; border-radius:12px; text-align:center; color:white; max-width:300px; width:90%;">
+      <h3>Out of Power-ups ⚡</h3>
+      <p>You have <span id="powerupModalCoins">0</span> 🪙</p>
+      <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+        <button id="buyWithCoins">Buy 1 (<span id="buyPrice">30</span> 🪙)</button>
+        <button id="watchAdBtn">Watch Ad 🎥</button>
+        <button id="closePowerupModal">Cancel</button>
+      </div>
+    </div>
+  `;
+    document.body.appendChild(modal);
+
+    document.getElementById("closePowerupModal").onclick = () => {
+      document.getElementById("powerupModal").style.display = "none";
+      resumeGame(); // ▶️ Resume if they cancel
+    };
+
+    // Buy with coins
+    document.getElementById("buyWithCoins").onclick = () => {
+      const cost = POWERUP_PRICES[currentPowerupType] || 30;
+      if (state.coins >= cost) {
+        state.coins -= cost;
+        state.powerups[currentPowerupType]++;
+        STORAGE.saveProgress("buy-powerup-" + currentPowerupType);
+        toast("+1 " + currentPowerupType + " purchased!");
+        updateHUD();
+        modal.style.display = "none";
+        resumeGame();
+      } else {
+        toast("Not enough coins!");
+      }
+    };
+
+    // Watch ad
+    document.getElementById("watchAdBtn").onclick = () => {
+      toast("🎥 Watching ad...");
+      setTimeout(() => {
+        toast("Thanks for watching! +1 " + currentPowerupType);
+        state.powerups[currentPowerupType]++;
+        STORAGE.saveProgress("ad-reward-" + currentPowerupType);
+        updateHUD();
+        modal.style.display = "none";
+        resumeGame();
+      }, 4000); // simulate 4s ad
+    };
+  })();
+
+  // --- Prices for each power-up ---
+  const POWERUP_PRICES = {
+    hint: 30,
+    time: 40,
+    auto: 50
+  };
+
+
+
+
+
+  // --- Power-up Modal ---
+  let currentPowerupType = null;
+
+  function setupPowerupModal() {
+    if (document.getElementById("powerupModal")) return;
+
+    const modal = document.createElement("div");
+    modal.id = "powerupModal";
+    Object.assign(modal.style, {
+      display: "none",
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100%",
+      height: "100%",
+      background: "rgba(0,0,0,0.6)",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: "9999",
+    });
+
+    modal.innerHTML = `
+    <div style="background:#222; padding:20px; border-radius:12px; text-align:center; color:white; max-width:300px; width:90%;">
+      <h3>Out of Power-ups ⚡</h3>
+      <p>You have <span id="powerupModalCoins">0</span> 🪙</p>
+      <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+        <button id="buyWithCoins">Buy 1 (<span id="buyPrice">30</span> 🪙)</button>
+        <button id="watchAdBtn">Watch Ad 🎥</button>
+        <button id="closePowerupModal">Cancel</button>
+      </div>
+    </div>
+  `;
+    document.body.appendChild(modal);
+
+
+
+
+    // Buy with coins
+    document.getElementById("buyWithCoins").onclick = () => {
+      const cost = POWERUP_PRICES[currentPowerupType] || 30;
+      if (state.coins >= cost) {
+        state.coins -= cost;
+        state.powerups[currentPowerupType]++;
+        STORAGE.saveProgress("buy-powerup-" + currentPowerupType);
+        toast("+1 " + currentPowerupType + " purchased!");
+        updateHUD();
+        modal.style.display = "none";
+      } else {
+        toast("Not enough coins!");
+      }
+    };
+
+    // Watch Ad
+    document.getElementById("watchAdBtn").onclick = () => {
+      toast("🎥 Watching ad...");
+      setTimeout(() => {
+        toast("Thanks for watching! +1 " + currentPowerupType);
+        state.powerups[currentPowerupType]++;
+        STORAGE.saveProgress("ad-reward-" + currentPowerupType);
+        updateHUD();
+        modal.style.display = "none";
+      }, 4000); // simulate ad duration
+    };
+  }
+
+  function openPowerupModal(type) {
+    currentPowerupType = type;
+    setupPowerupModal();
+    document.getElementById("powerupModalCoins").textContent = state.coins || 0;
+    document.getElementById("buyPrice").textContent = POWERUP_PRICES[type] || 30;
+    document.getElementById("powerupModal").style.display = "flex";
+    pauseGame();// stop the countdown
+  }
+
+  // --- Updated Power-up Button Handlers ---
   on("#hintBtn", "click", () => {
-    useHint();
-    startCooldown(document.getElementById("hintBtn"), 5000);
-    STORAGE.saveProgress("powerup-hint");
+    if (state.powerups.hint > 0) {
+      startCooldown(document.getElementById("hintBtn"), 5000);
+      useHint();
+      STORAGE.saveProgress("powerup-use-hint");
+    } else {
+      openPowerupModal("hint");
+    }
   });
 
   on("#timeBtn", "click", () => {
-    addTime();
-    startCooldown(document.getElementById("timeBtn"), 7000);
-    STORAGE.saveProgress("powerup-time");
+    if (state.powerups.time > 0) {
+      startCooldown(document.getElementById("timeBtn"), 7000);
+      addTime();
+      STORAGE.saveProgress("powerup-use-time");
+    } else {
+      openPowerupModal("time");
+    }
   });
 
   on("#autoBtn", "click", () => {
-    autoFind();
-    startCooldown(document.getElementById("autoBtn"), 10000);
-    STORAGE.saveProgress("powerup-auto");
+    if (state.powerups.auto > 0) {
+      startCooldown(document.getElementById("autoBtn"), 10000);
+      autoFind();
+      STORAGE.saveProgress("powerup-use-auto");
+    } else {
+      openPowerupModal("auto");
+    }
   });
+
+
 
   // Next & Replay buttons on Level Complete
   on("#nextBtn", "click", () => {
@@ -1123,8 +1374,16 @@ if (menuToggleClose && settingsMenu) {
      Core Flow
      =========================== */
   function restartLevel() {
+
+    const wordColors = {};
+    colorIndex = 0;
+
+
     clearInterval(state.timer);
     state.usedHints = 0;
+
+      for (const key in wordColors) delete wordColors[key];
+  colorIndex = 0;
 
     const themeKey = state.themeKeys[state.themeIndex];
     const rng = state.dailyMode ? mulberry32((state.rngSeed ?? 12345) + state.level) : null;
@@ -1177,6 +1436,61 @@ if (menuToggleClose && settingsMenu) {
       state._autosaveId = null;
     }
   }
+  function checkDailyReward() {
+    const now = Date.now();
+    const lastClaim = parseInt(localStorage.getItem("lastDailyReward") || "0");
+
+    // 24h = 86,400,000 ms
+    if (now - lastClaim >= 86400000) {
+      // Give reward
+      const coinReward = 50;
+      const hintReward = 1;
+
+      state.coins += coinReward;
+      state.powerups.hint += hintReward;
+
+      STORAGE.saveProgress("daily-reward");
+      updateHUD();
+
+      toast(`🎁 Daily Reward! +${coinReward} coins & +${hintReward} Hint`);
+      showDailyRewardModal(coinReward, hintReward);
+
+
+      // Save new claim time
+      localStorage.setItem("lastDailyReward", now);
+    }
+  }
+
+  function showDailyRewardModal(coins, hints) {
+    const modal = document.createElement("div");
+    Object.assign(modal.style, {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100%",
+      height: "100%",
+      background: "rgba(0,0,0,0.6)",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: "9999",
+    });
+
+    modal.innerHTML = `
+    <div style="background:#222; color:white; padding:20px; border-radius:12px; text-align:center; max-width:300px;">
+      <h3>🎁 Daily Reward!</h3>
+      <p>You earned +${coins} coins & +${hints} hint</p>
+      <button id="closeDailyReward">OK</button>
+    </div>
+  `;
+    document.body.appendChild(modal);
+
+    document.getElementById("closeDailyReward").onclick = () => {
+      modal.remove();
+    };
+  }
+
+
 
   /* ===========================
      Init
@@ -1185,7 +1499,9 @@ if (menuToggleClose && settingsMenu) {
     populateThemes();
     bindPointer();
     renderAchievements();      // for modal
-    renderAchievementsHome();  // for home screen
+    renderAchievementsHome();
+    checkDailyReward()
+    // for home screen
 
     const continueBtn = document.getElementById("continue");
     if (continueBtn) {
@@ -1266,14 +1582,14 @@ if (menuToggleClose && settingsMenu) {
   window._wsToast = toast;
 
   // Boot preview if you want to auto-init without splash:
-  //init();
-  // Just show achievements on home screen, do not start game
-  document.addEventListener("DOMContentLoaded", () => {
-    if (window._wsStorage) {
-      renderAchievementsHome();
-    }
-  });
-
+  // Show achievements before start, do not auto-start game
+  if (window._wsStorage) {
+    renderAchievementsHome();
+  } else {
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window._wsStorage) renderAchievementsHome();
+    });
+  }
 
 })();
 
@@ -1310,6 +1626,52 @@ function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
+
+// ===============================
+// Unified Game State Helpers
+// ===============================
+function getGameState() {
+  const raw = localStorage.getItem("ws_progress");
+  if (raw) {
+    try {
+      const data = JSON.parse(raw);
+      return {
+        coins: parseInt(localStorage.getItem("coins") || data.coins || 0, 10),
+        powerups: data.powerups || { hint: 0, time: 0, auto: 0 }
+      };
+    } catch { }
+  }
+  return {
+    coins: parseInt(localStorage.getItem("coins") || 0, 10),
+    powerups: { hint: 0, time: 0, auto: 0 }
+  };
+}
+
+function saveGameState(state) {
+  const raw = localStorage.getItem("ws_progress");
+  let data = {};
+  try { data = JSON.parse(raw) || {}; } catch { }
+  data.coins = state.coins;
+  data.powerups = state.powerups;
+  localStorage.setItem("ws_progress", JSON.stringify(data));
+  localStorage.setItem("coins", String(state.coins));
+}
+
+function updateCoins(amount) {
+  const st = getGameState();
+  st.coins = (st.coins || 0) + amount;
+  saveGameState(st);
+  if (window._wsUpdateHUD) window._wsUpdateHUD();
+}
+
+function addPowerup(type, amount = 1) {
+  const st = getGameState();
+  if (!st.powerups[type]) st.powerups[type] = 0;
+  st.powerups[type] += amount;
+  saveGameState(st);
+  if (window._wsUpdateHUD) window._wsUpdateHUD();
+}
+
 
 function debounce(fn, ms = 250) {
   let t;
@@ -1418,7 +1780,7 @@ checkAndRefillPowerups();
   "use strict";
 
   // --- Config ----------------------------------------------------------
-  const COINS_KEY = "ws_coins";
+  const COINS_KEY = "coins";
   const AD_REWARD = 20;
   const PRODUCTS = [
     { amount: 100, price: 0.99, label: "100 Coins" },
@@ -1454,13 +1816,12 @@ checkAndRefillPowerups();
       return n;
     } catch { return getState().coins || 0; }
   }
-function saveCoins() {
-  try {
-    const n = Math.max(0, (getState().coins | 0));
-    localStorage.setItem(COINS_KEY, String(n));  // ws_coins
-    if (window._wsStorage) window._wsStorage.saveProgress("coins-sync"); // ✅ keep ws_progress updated
-  } catch {}
-}
+  function saveCoins() {
+    try {
+      const n = Math.max(0, (getState().coins | 0));
+      localStorage.setItem(COINS_KEY, String(n));
+    } catch { }
+  }
   function addCoins(n) {
     const st = getState();
     st.coins = Math.max(0, (st.coins | 0) + (n | 0));
@@ -1640,6 +2001,242 @@ function saveCoins() {
 })();
 
 
+
 /* =====================================================================
    END OF FILE
    ===================================================================== */
+
+
+// =============================
+// OPEN SPIN WHEEL
+// =============================
+function openSpinWheel() {
+  const now = Date.now();
+  const lastSpin = parseInt(localStorage.getItem("lastSpin") || "0");
+
+  // Can open if daily spin available OR if ad spin is available
+  if (now - lastSpin < 86400000 && !localStorage.getItem("adSpinCount")) {
+    if (window._wsToast) window._wsToast("⏳ You already spun today. Watch an ad for more spins!");
+    return;
+  }
+
+  const rewards = [
+    { text: "+10 coins", coins: 10, color: "gold" },
+    { text: "+20 coins", coins: 20, color: "red" },
+    { text: "+1 Hint", hint: 1, color: "green" },
+    { text: "+50 coins", coins: 50, color: "blue" },
+    { text: "+1 Auto", auto: 1, color: "purple" },
+    { text: "Nothing 😢", color: "orange" },
+    { text: "+100 coins", coins: 100, color: "gray" },
+  ];
+
+  const anglePerSlice = 360 / rewards.length;
+
+  // Build wheel HTML
+  let slicesHTML = "";
+  rewards.forEach((reward, i) => {
+    slicesHTML += `
+      <div style="
+        position:absolute; 
+        width:50%; 
+        height:50%; 
+        top:50%; 
+        left:50%; 
+        transform-origin:0% 0%; 
+        transform:rotate(${i * anglePerSlice}deg) skewY(${90 - anglePerSlice}deg);
+        background:${reward.color};
+      "></div>
+      <div style="
+        position:absolute;
+        width:100%;
+        text-align:center;
+        top:50%;
+        left:0;
+        transform:rotate(${i * anglePerSlice + anglePerSlice / 2}deg) translateY(-80px);
+        font-size:12px;
+      ">
+        ${reward.text}
+      </div>
+    `;
+  });
+
+  const modal = document.createElement("div");
+  Object.assign(modal.style, {
+    position: "fixed",
+    top: "0", left: "0", width: "100%", height: "100%",
+    background: "rgba(0,0,0,0.6)",
+    display: "flex", justifyContent: "center", alignItems: "center",
+    zIndex: "9999"
+  });
+
+  modal.innerHTML = `
+    <div style="background:#222; padding:20px; border-radius:12px; color:white; text-align:center; max-width:350px;">
+      <h3>🎡 Spin the Wheel!</h3>
+      <div style="position:relative; width:200px; height:200px; margin:20px auto; border-radius:50%; overflow:hidden; border:5px solid gold;">
+        <div id="wheel" style="width:100%; height:100%; border-radius:50%; transition: transform 4s ease-out; position:relative;">
+          ${slicesHTML}
+        </div>
+        <div style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:24px;">🔻</div>
+      </div>
+      <div id="wheelResult" style="margin:10px; font-size:18px;">Ready to spin!</div>
+      <button id="spinNowBtn">Spin ▶️</button>
+      <button id="watchAdBtn">📺 Watch Ad for Extra Spin</button>
+      <button id="closeSpin">Close</button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // Attach event listeners
+  const closeBtn = modal.querySelector("#closeSpin");
+  const spinBtn = modal.querySelector("#spinNowBtn");
+  const watchAdBtn = modal.querySelector("#watchAdBtn");
+
+  closeBtn.addEventListener("click", () => modal.remove());
+  spinBtn.addEventListener("click", () => spinReward(modal, rewards));
+
+  // Watch ad button - spins automatically after ad
+  watchAdBtn.addEventListener("click", () => {
+    playAdSimulation(() => {
+      // Automatically spin the wheel after ad
+      spinReward(modal, rewards);
+    });
+  });
+}
+
+// =============================
+// AD SIMULATION
+// =============================
+function playAdSimulation(callback) {
+  const adModal = document.createElement("div");
+  Object.assign(adModal.style, {
+    position: "fixed",
+    top: "0", left: "0", width: "100%", height: "100%",
+    background: "black",
+    display: "flex", flexDirection: "column",
+    justifyContent: "center", alignItems: "center",
+    color: "white",
+    zIndex: "10000",
+    fontSize: "20px",
+    textAlign: "center"
+  });
+
+  adModal.innerHTML = `
+    <p>📺 Your ad is playing...</p>
+    <div id="adProgress" style="width:80%; height:20px; background:#333; border-radius:10px; margin-top:20px; overflow:hidden;">
+      <div id="adBar" style="width:0%; height:100%; background:limegreen;"></div>
+    </div>
+    <p id="adCountdown">5s remaining</p>
+  `;
+
+  document.body.appendChild(adModal);
+
+  let time = 5;
+  const adBar = adModal.querySelector("#adBar");
+  const adCountdown = adModal.querySelector("#adCountdown");
+
+  const interval = setInterval(() => {
+    time--;
+    adBar.style.width = `${((5 - time) / 5) * 100}%`;
+    adCountdown.textContent = `${time}s remaining`;
+
+    if (time <= 0) {
+      clearInterval(interval);
+      document.body.removeChild(adModal);
+      callback(); // automatically spins after ad
+    }
+  }, 1000);
+}
+
+// =============================
+// SPIN LOGIC
+// =============================
+function spinReward(modal, rewards) {
+  const wheel = modal.querySelector("#wheel");
+  const spinNowBtn = modal.querySelector("#spinNowBtn");
+
+  spinNowBtn.disabled = true;
+
+  const slice = Math.floor(Math.random() * rewards.length);
+  const anglePerSlice = 360 / rewards.length;
+  const rotation = 5 * 360 + slice * anglePerSlice + (anglePerSlice / 2);
+
+  wheel.style.transition = "none";
+  wheel.style.transform = `rotate(0deg)`;
+  setTimeout(() => {
+    wheel.style.transition = "transform 4s ease-out";
+    wheel.style.transform = `rotate(${rotation}deg)`;
+  }, 50);
+
+  setTimeout(() => {
+    const reward = rewards[slice];
+    const resultEl = modal.querySelector("#wheelResult");
+    resultEl.textContent = `You got: ${reward.text}`;
+
+    if (reward.coins) updateCoins(reward.coins);
+    if (reward.hint) addPowerup("hint", reward.hint);
+    if (reward.auto) addPowerup("auto", reward.auto);
+
+    // Check if it's an ad spin or daily spin
+    let adSpinCount = parseInt(localStorage.getItem("adSpinCount") || "0");
+    if (adSpinCount > 0) {
+      localStorage.setItem("adSpinCount", adSpinCount - 1); // consume one ad spin
+    } else {
+      localStorage.setItem("lastSpin", Date.now()); // daily spin
+    }
+
+    spinNowBtn.disabled = true;
+    spinNowBtn.textContent = "⏳ Done!";
+    updateSidebarButton();
+  }, 4000);
+}
+
+// =============================
+// SIDEBAR BUTTON
+// =============================
+function updateSidebarButton() {
+  let spinBtn = document.querySelector("#spinWheelBtn");
+  if (!spinBtn) {
+    spinBtn = document.createElement("button");
+    spinBtn.id = "spinWheelBtn";
+    spinBtn.textContent = "🎡 Spin Wheel";
+    spinBtn.style.marginLeft = "10px";
+    spinBtn.onclick = openSpinWheel;
+
+    const sidebar = document.querySelector("#sidebar-top") || document.body;
+    sidebar.appendChild(spinBtn);
+  }
+
+  const now = Date.now();
+  const lastSpin = parseInt(localStorage.getItem("lastSpin") || "0");
+  const diff = now - lastSpin;
+  const adSpinCount = parseInt(localStorage.getItem("adSpinCount") || "0");
+
+  if (adSpinCount > 0) {
+    spinBtn.disabled = false;
+    spinBtn.textContent = `🎡 Spin (Ad x${adSpinCount})`;
+    return;
+  }
+
+  if (diff < 86400000) {
+    spinBtn.disabled = true;
+    let remaining = Math.ceil((86400000 - diff) / 1000);
+    spinBtn.textContent = `⏳ Next spin in ${formatTime(remaining)}`;
+    setTimeout(updateSidebarButton, 1000);
+  } else {
+    spinBtn.disabled = false;
+    spinBtn.textContent = "🎡 Spin Wheel";
+  }
+}
+
+function formatTime(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  return `${h}h ${m}m ${s}s`;
+}
+
+// =============================
+// INIT BUTTON ON PAGE LOAD
+// =============================
+document.addEventListener("DOMContentLoaded", updateSidebarButton);
