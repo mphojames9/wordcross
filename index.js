@@ -1178,11 +1178,10 @@ if (menuToggleClose && settingsMenu) {
     modal.innerHTML = `
     <div class="powerUptopUp">
       <h3>Out of Power-ups ⚡</h3>
-                    <img src="./images/goldIcon.png" alt="" class="coinImgIcoin">
-      <p>You have <span id="powerupModalCoins">0</span> </p>
+                    
+      <p>You have <span id="powerupModalCoins">0 </span> <img src="./images/goldIcon.png" alt="" class="coinImgIcoin"></p>
       <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
-                    <img src="./images/goldIcon.png" alt="" class="coinImgIcoin">
-        <button class="buyPowerUp" id="buyWithCoins">Buy 1 (<span id="buyPrice">30</span> </button>
+        <button class="buyPowerUp" id="buyWithCoins">Buy 1 (<span id="buyPrice">30</span> <img src="./images/goldIcon.png" alt="" class="coinImgIcoin"> ) </button>
         <button class="buyPowerUp" id="watchAdBtn">Watch Ad 🎥</button>
         <button class="buyPowerUp" id="closePowerupModal">Cancel</button>
       </div>
@@ -2076,17 +2075,19 @@ function openSpinWheel() {
   });
 
   modal.innerHTML = `
-    <div style="background:#222; padding:20px; border-radius:12px; color:white; text-align:center; max-width:350px;">
+    <div class="wheelContent" style="padding:20px; border-radius:12px; color:white; text-align:center; max-width:350px;">
       <h3>🎡 Spin the Wheel!</h3>
-      <div style="position:relative; width:250px; height:250px; margin:20px auto;">
+      <div class="wheelItemContainer" style="position:relative; width:250px; height:250px; margin:20px auto;">
+      <div class="wheelBorder"></div>
+      <div class="wheelCenter"></div>
         <img id="wheel" 
              src="./images/background/wheel.png" 
              style="width:100%; height:100%; border-radius:50%; transition: transform 4s ease-out;" />
-        <div style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:24px;">🔻</div>
+        <div style="position:absolute; top:-20px; left:50%; z-index: 200; transform:translateX(-50%); font-size:24px;">🔻</div>
       </div>
       <div id="wheelResult" style="margin:10px; font-size:18px;">Ready to spin!</div>
       <button id="spinNowBtn">Spin ▶️</button>
-      <button id="watchAdBtn">📺 Watch Ad for Extra Spin</button>
+      <button id="watchAdBtnSpin" style="display: none;">📺 Watch Ad for Extra Spin</button>
       <button id="closeSpin">Close</button>
     </div>
   `;
@@ -2096,13 +2097,13 @@ function openSpinWheel() {
   // Attach event listeners
   const closeBtn = modal.querySelector("#closeSpin");
   const spinBtn = modal.querySelector("#spinNowBtn");
-  const watchAdBtn = modal.querySelector("#watchAdBtn");
+  const watchAdBtnSpin = modal.querySelector("#watchAdBtnSpin");
 
   closeBtn.addEventListener("click", () => modal.remove());
   spinBtn.addEventListener("click", () => spinReward(modal, rewards));
 
   // Watch ad button - spins automatically after ad
-  watchAdBtn.addEventListener("click", () => {
+  watchAdBtnSpin.addEventListener("click", () => {
     playAdSimulation(() => {
       // Automatically spin the wheel after ad
       spinReward(modal, rewards);
@@ -2158,9 +2159,6 @@ function playAdSimulation(callback) {
 // =============================
 // SPIN LOGIC
 // =============================
-// =============================
-// SPIN LOGIC
-// =============================
 function spinReward(modal, rewards) {
   const wheel = modal.querySelector("#wheel");
   const spinNowBtn = modal.querySelector("#spinNowBtn");
@@ -2206,6 +2204,7 @@ function spinReward(modal, rewards) {
     spinNowBtn.disabled = true;
     spinNowBtn.textContent = "⏳";
     spinNowBtn.style.display = "none";
+    watchAdBtnSpin.style.display = "flex";
     updateSidebarButton();
   }, 4000);
 }
