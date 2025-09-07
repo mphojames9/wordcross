@@ -26,31 +26,41 @@ if (menuToggleClose && settingsMenu) {
      Data / Config
      =========================== */
   const defaultThemes = {
-    Programming: [
-      ["JAVASCRIPT", "HTML", "CSS", "CODE", "APP"],
-      ["PYTHON", "REACT", "VUE", "NODE", "SQL"],
-      ["ANDROID", "JAVA", "SWIFT", "KOTLIN", "MOBILE"],
-    ],
+
     Animals: [
       ["DOG", "CAT", "LION", "TIGER", "HORSE"],
       ["MONKEY", "ZEBRA", "FROG", "SNAKE", "EAGLE"],
       ["DOLPHIN", "PANDA", "RABBIT", "CAMEL", "WHALE"],
     ],
-    Countries: [
+        Countries: [
       ["FRANCE", "SPAIN", "CHINA", "INDIA", "EGYPT"],
       ["BRAZIL", "CANADA", "ITALY", "JAPAN", "KENYA"],
       ["MEXICO", "NORWAY", "TURKEY", "QATAR", "GHANA"],
     ],
-    Science: [
-      ["ATOM", "GENE", "CELL", "DNA", "ION"],
-      ["NEURON", "GRAVITY", "ENERGY", "FORCE", "LASER"],
-      ["QUANTUM", "ENTROPY", "ISOTOPE", "PLASMA", "GALAXY"],
+
+        Colors: [
+      ["RED","BLUE","GREEN","YELLOW","PURPLE","ORANGE"],
+      ["PINK","BROWN","BLACK","WHITE","CYAN","MAGENTA"],
+      ["BEIGE","LIME","TEAL","NAVY","OLIVE","MAROON"],
+      ["GRAY","VIOLET","INDIGO","TURQUOISE","SALMON"],
+      ["GOLD","SILVER","BRONZE","IVORY","PEACH","MINT","CORAL"]
     ],
-    Food: [
-      ["BREAD", "APPLE", "RICE", "SOUP", "PASTA"],
-      ["BURGER", "SALAD", "SUSHI", "PIZZA", "STEAK"],
-      ["AVOCADO", "CHEESE", "CHOCOLATE", "OMELETTE", "PANCAKE"],
-    ]
+
+     Food: [
+      ["BREAD","APPLE","RICE","SOUP","PASTA","BURGER"],
+     ["SALAD","SUSHI","PIZZA","STEAK","AVOCADO","CHEESE"],
+     ["CHOCOLATE","OMELETTE","PANCAKE","BISCUIT","CURRY",]
+     ["BERRY","HONEY","TOAST","NUTS","COFFEE","TEA"],
+     ["JUICE","MILK","TACO","DONUT","MUSHROOM","GARLIC","TOMATO"],
+     ],
+
+    Science: [
+      ["ATOM","GENE","CELL","DNA","ION","NEURON","GRAVITY"],
+      ["ENERGY","FORCE","LASER","QUANTUM","ENTROPY"],
+      ["ISOTOPE","PLASMA","GALAXY","PROTON","NOVA"],
+      ["LIGHT","EARTH","SOLAR","VIRUS","ROBOT","FUSION"],
+      ["PLANET","OXYGEN","RADIO","MAGNET","CHEMICAL","TIDAL","NUTRIENT"]
+    ],
   };
 
 
@@ -1560,7 +1570,6 @@ watchAdBtn.addEventListener("click", () => {
         state.score = 0;
         restartLevel();
         hideHomeSec();
-        toast("New game started ✨");
       };
     }
 
