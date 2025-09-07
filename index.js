@@ -1446,7 +1446,7 @@ watchAdBtn.addEventListener("click", () => {
     } else {
       if (state.themeIndex < state.themeKeys.length - 1) {
         state.themeIndex++;
-        state.level = 0;
+        state.level++;
       } else {
         toast("🏁 All themes complete!");
         STORAGE.leaderboard.add(state.score);
