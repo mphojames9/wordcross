@@ -1,3 +1,6 @@
+
+
+document.addEventListener("DOMContentLoaded", () => {
 /* ============================
    Global menu toggle (outside IIFE)
    ============================ */
@@ -93,7 +96,7 @@ if (menuToggleClose && settingsMenu) {
     themeKeys: Object.keys(defaultThemes),
     themeIndex: 0,
     level: 0,
-    size: 10,
+    size: 15,
     wordsPerLevel: 5,
     grid: [],
     words: [],
@@ -173,8 +176,8 @@ if (menuToggleClose && settingsMenu) {
   function setGridSizeCSS(size) {
     const gridEl = $("#grid");
     if (!gridEl) return;
-    gridEl.style.gridTemplateColumns = `repeat(${size}, var(--cell))`;
-    gridEl.style.gridTemplateRows = `repeat(${size}, var(--cell))`;
+    gridEl.style.gridTemplateColumns = `repeat(15, 1fr)`;
+    gridEl.style.gridTemplateRows = `repeat(15, 1fr)`;
   }
 
   function clamp(n, min, max) {
@@ -209,22 +212,6 @@ if (menuToggleClose && settingsMenu) {
     achievements: "ws_achv",
     version: "ws_version",
   };
-
-  const POWERUP_MAX = { hint: 3, time: 3, auto: 2 };
-  function refillPowerups() {
-    let changed = false;
-    for (const key of Object.keys(state.powerups)) {
-      if (state.powerups[key] < POWERUP_MAX[key]) {
-        state.powerups[key] = Math.min(state.powerups[key] + 1, POWERUP_MAX[key]);
-        changed = true;
-      }
-    }
-    if (changed) {
-      updateHUD();
-      STORAGE.saveProgress("powerup-refill");
-      toast("✨ Power-ups refilled!");
-    }
-  }
 
   const STORAGE = {
     saveProgress(reason = "manual") {
@@ -391,12 +378,12 @@ if (menuToggleClose && settingsMenu) {
     const have = STORAGE.achievements.get();
     const all = ACHIEVEMENTS.map(a => {
       const owned = !!have[a.id];
-      return `<div style="display:flex; justify-content:space-between; padding:10px; border:1px solid rgba(255,255,255,.08); border-radius:12px; margin:8px 0; ${owned ? 'background:#0f2a22;' : ''}">
+      return `<div style="display:flex; justify-content:space-between; padding:10px; border:1px solid rgba(255,255,255,.08); border-radius:12px; margin:8px 0; ${owned ? 'background:#4984ac;' : ''}">
         <div>
           <div style="font-weight:700;">${a.name}</div>
           <div style="color:var(--muted); font-size:13px">${a.desc}</div>
         </div>
-        <div class="badge" style="${owned ? 'background:#0f2a22; color:#b2f5c8; border-color:#2bdc7b66;' : ''}">${owned ? 'Unlocked' : 'Locked'}</div>
+        <div class="badge" style="${owned ? 'color:#b2f5c8;' : ''}">${owned ? 'Unlocked' : 'Locked'}</div>
       </div>`
     }).join('');
     list.innerHTML = all || '<div style="color:var(--muted)">No achievements yet.</div>';
@@ -408,12 +395,12 @@ if (menuToggleClose && settingsMenu) {
     const have = STORAGE.achievements.get();
     const all = ACHIEVEMENTS.map(a => {
       const owned = !!have[a.id];
-      return `<div style="display:flex; justify-content:space-between; padding:8px; border:1px solid rgba(255,255,255,.08); border-radius:10px; margin:6px 0; ${owned ? 'background:#0f2a22;' : ''}">
+      return `<div style="display:flex; justify-content:space-between; padding:8px; border:1px solid rgba(255,255,255,.08); border-radius:10px; margin:6px 0; ${owned ? 'background:#4984ac;' : ''}">
       <div>
         <div style="font-weight:600;">${a.name}</div>
         <div style="color:var(--muted); font-size:12px">${a.desc}</div>
       </div>
-      <div class="badge" style="${owned ? 'background:#0f2a22; color:#b2f5c8; border-color:#2bdc7b66;' : ''}">
+      <div class="badge" style="${owned ? 'color:#b2f5c8; border-color:#4984ac;' : ''}">
         ${owned ? '✔' : '✖'}
       </div>
     </div>`;
@@ -579,7 +566,7 @@ if (menuToggleClose && settingsMenu) {
      Timer / Difficulty
      =========================== */
   function baseTimeByDifficulty() {
-    return state.difficulty === "easy" ? 90 : state.difficulty === "hard" ? 45 : 60;
+    return state.difficulty === "easy" ? 200 : state.difficulty === "hard" ? 45 : 60;
   }
 
   function updateTimerBar() {
@@ -588,7 +575,6 @@ if (menuToggleClose && settingsMenu) {
     const total = baseTimeByDifficulty();
     const pct = clamp((state.timeLeft / total) * 100, 0, 100);
     timerBar.style.width = `${pct}%`;
-    console.log(pct)
 
     const ration = $("#timer");
     if (ration) {
@@ -797,6 +783,39 @@ if (menuToggleClose && settingsMenu) {
     });
   }
 
+  // === ACCESSIBILITY HELPERS ===
+(function ensureAriaLive() {
+  if (document.getElementById("ws_aria_live")) return;
+  const live = document.createElement("div");
+  live.id = "ws_aria_live";
+  live.setAttribute("aria-live", "polite");
+  live.setAttribute("role", "status");
+  Object.assign(live.style, {
+    position: "absolute",
+    left: "-9999px",
+    width: "1px",
+    height: "1px",
+    overflow: "hidden",
+  });
+  document.body.appendChild(live);
+})();
+
+function announceForA11y(text, speak = true) {
+  const live = document.getElementById("ws_aria_live");
+  if (live) {
+    live.textContent = "";
+    setTimeout(() => { live.textContent = text; }, 50);
+  }
+  if (speak && "speechSynthesis" in window) {
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 0.95;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
+  }
+}
+;
+
+
   function markWordCoords(coords, word) {
     if (!Array.isArray(coords)) return;
 
@@ -807,6 +826,7 @@ if (menuToggleClose && settingsMenu) {
       if (cell) {
         cell.classList.remove("highlight");
         cell.dataset.found = "1";
+        cell.classList.add("testi");
         cell.setAttribute("aria-pressed", "true");
 
         // Apply unique background color
@@ -821,6 +841,14 @@ if (menuToggleClose && settingsMenu) {
       tag.style.color = color;
       tag.style.fontWeight = "bold";
     }
+      // === Accessibility hook ===
+    const first = getCellAt(coords[0].r, coords[0].c);
+    if (first) {
+      first.tabIndex = -1;
+      try { first.focus({ preventScroll: false }); } catch (e) { first.focus(); }
+    }
+    announceForA11y(`Found word: ${word}`, true);
+
   }
 
 
@@ -1112,7 +1140,7 @@ if (menuToggleClose && settingsMenu) {
   });
 
   on("#wordsPerLevel", "change", (e) => {
-    state.wordsPerLevel = clamp(+e.target.value, 4, 10);
+    state.wordsPerLevel = clamp(+e.target.value, 4, 15);
     STORAGE.saveProgress("settings-change");
     restartLevel();
   });
@@ -1182,7 +1210,6 @@ if (menuToggleClose && settingsMenu) {
     modal.style.left = "0";
     modal.style.width = "100%";
     modal.style.height = "100%";
-    modal.style.background = "rgba(0,0,0,0.6)";
     modal.style.justifyContent = "center";
     modal.style.alignItems = "center";
     modal.innerHTML = `
@@ -1482,58 +1509,99 @@ watchAdBtn.addEventListener("click", () => {
       state._autosaveId = null;
     }
   }
-  function checkDailyReward() {
-    const now = Date.now();
-    const lastClaim = parseInt(localStorage.getItem("lastDailyReward") || "0");
 
-    // 24h = 86,400,000 ms
-    if (now - lastClaim >= 86400000) {
-      // Give reward
-      const coinReward = 50;
-      const hintReward = 1;
+  // =============================
+// 7-Day Daily Rewards System
+// =============================
 
-      state.coins += coinReward;
-      state.powerups.hint += hintReward;
+// Define reward table
+const DAILY_REWARDS = [
+  { coins: 50, hints: 0 },
+  { coins: 100, hints: 0 },
+  { coins: 0, hints: 1 },
+  { coins: 200, hints: 0 },
+  { coins: 0, hints: 2 },
+  { coins: 300, hints: 0 },
+  { coins: 500, hints: 0 },
+];
 
-      STORAGE.saveProgress("daily-reward");
-      updateHUD();
+// Check and grant daily reward
+function checkDailyReward() {
+  const now = Date.now();
+  const lastClaim = parseInt(localStorage.getItem("lastDailyReward") || "0");
+  let streak = parseInt(localStorage.getItem("dailyStreak") || "0");
 
-      showDailyRewardModal(coinReward, hintReward);
-
-
-      // Save new claim time
-      localStorage.setItem("lastDailyReward", now);
-    }
+  // If missed more than 1 day → reset streak
+  if (lastClaim && now - lastClaim > 86400000 * 2) {
+    streak = 0;
+    localStorage.setItem("dailyStreak", "0");
   }
 
-  function showDailyRewardModal(coins, hints) {
-    const modal = document.createElement("div");
-    Object.assign(modal.style, {
-      position: "fixed",
-      top: "0",
-      left: "0",
-      width: "100%",
-      height: "100%",
-      background: "rgba(0,0,0,0.6)",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      zIndex: "9999",
-    });
+  // If 24h passed → give reward
+  if (now - lastClaim >= 86400000) {
+    streak = (streak % 7) + 1;
+    const reward = DAILY_REWARDS[streak - 1];
 
-    modal.innerHTML = `
-    <div class="dailyRewards">
-      <h2 style="margin: 10px;">🎁 Daily Reward!</h2>
-            <p>You earned +${coins}  <img src="./images/goldIcon.png" alt="" class="coinImgIcoin"> & +${hints} hint</p>
-      <button id="closeDailyReward">OK</button>
+    // Apply rewards to global state (from index.js)
+    if (window._wsState) {
+      window._wsState.coins += reward.coins;
+      window._wsState.powerups.hint += reward.hints;
+      if (window._wsStorage) window._wsStorage.saveProgress("daily-reward");
+      if (window._wsUpdateHUD) window._wsUpdateHUD();
+    }
+
+    showDailyRewardOverlay(streak, reward);
+
+    // Save progress
+    localStorage.setItem("dailyStreak", streak);
+    localStorage.setItem("lastDailyReward", now);
+  }
+}
+
+// Overlay display
+function showDailyRewardOverlay(day, reward) {
+  // Create overlay
+  const modal = document.createElement("div");
+  modal.className = "daily-reward-overlay";
+  
+
+  const rewardList = DAILY_REWARDS.map((r, i) => {
+    const claimed = i + 1 < day;
+    const today = i + 1 === day;
+    return `
+      <div class="reward-card ${claimed ? "claimed" : today ? "today" : ""}">
+        <span class="day-label">Day ${i + 1}</span>
+        <div class="reward-items">
+          ${r.coins ? `<span>${r.coins} 🪙</span>` : ""}
+          ${r.hints ? `<span>${r.hints} 💡</span>` : ""}
+        </div>
+        <div class="status">
+          ${claimed ? "✔ Claimed" : today ? "🎁 Today" : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  modal.innerHTML = `
+    <div class="daily-reward-modal">
+      <h2>🎁 Daily Login Reward</h2>
+      <div class="reward-list">${rewardList}</div>
+      <p class="reward-result">
+        You received: 
+        ${reward.coins ? `+${reward.coins} 🪙 ` : ""} 
+        ${reward.hints ? `+${reward.hints} 💡` : ""}
+      </p>
+      <button id="closeDailyReward" class="modern-btn">OK</button>
     </div>
   `;
-    document.body.appendChild(modal);
 
-    document.getElementById("closeDailyReward").onclick = () => {
-      modal.remove();
-    };
-  }
+  document.body.appendChild(modal);
+  document.getElementById("closeDailyReward").onclick = () => modal.remove();
+}
+
+
+// Expose globally
+window.checkDailyReward = checkDailyReward;
 
 
 
@@ -1545,7 +1613,7 @@ watchAdBtn.addEventListener("click", () => {
     bindPointer();
     renderAchievements();      // for modal
     renderAchievementsHome();
-    checkDailyReward()
+      if (window.checkDailyReward) checkDailyReward();
     // for home screen
 
     const continueBtn = document.getElementById("continue");
@@ -1883,27 +1951,6 @@ checkAndRefillPowerups();
     return true;
   }
 
-  function buildUIOnce() {
-    // Shop modal
-    const modal = document.createElement("div");
-    modal.id = "igcShopModal";
-    modal.innerHTML = `
-      <div class="pane" role="dialog" aria-modal="true" aria-label="Shop">
-        <h2 style="margin-top:16px">⚡</h2>
-        <div class="rowHome">
-          <button class="btnigc" id="igcBuyHint">+1 Hint (${POWERUP_PRICES.hint} 🪙)</button>
-          <button class="btnigc" id="igcBuyTime">+1 +10s (${POWERUP_PRICES.time} 🪙)</button>
-          <button class="btnigc" id="igcBuyAuto">+1 Auto (${POWERUP_PRICES.auto} 🪙)</button>
-        </div>
-      </div>
-    `;
-    $('#main-action').appendChild(modal);
-
-    // Modal events
-    $("#igcBuyHint").addEventListener("click", () => buyPowerup("hint", POWERUP_PRICES.hint));
-    $("#igcBuyTime").addEventListener("click", () => buyPowerup("time", POWERUP_PRICES.time));
-    $("#igcBuyAuto").addEventListener("click", () => buyPowerup("auto", POWERUP_PRICES.auto));
-  }
 
   function updateCoinsHUD() {
     const st = getState();
@@ -2025,7 +2072,6 @@ checkAndRefillPowerups();
   }
 
   function initAddon() {
-    buildUIOnce();
     wrapStorageOnce();
     loadCoins();
     updateCoinsHUD();
@@ -2266,3 +2312,14 @@ function formatTime(sec) {
 // INIT BUTTON ON PAGE LOAD
 // =============================
 document.addEventListener("DOMContentLoaded", updateSidebarButton);
+});
+
+
+function applyTheme1(theme) { 
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("theme", theme); // Save preference
+}
+
+// Load saved theme or default to light
+const savedTheme1 = localStorage.getItem("theme") || "light";
+applyTheme1(savedTheme1);

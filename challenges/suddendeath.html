@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Shrinking Mode — Word Search</title>
+  <style>
+    :root{
+      --bg-1: #0b1020;
+      --bg-2: #0f1726;
+      --panel: rgba(255,255,255,0.04);
+      --muted: #9aa3d6;
+      --ink: #e9eeff;
+      --accent-plain: #6c8cff;
+      --good: #35d67a;
+      --cell-size: 55px; /* will be updated by JS */
+      --cell-gap: 2px;
+    }
+
+    /* base */
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(108,140,255,0.06), transparent),
+                  radial-gradient(1000px 500px at 90% 90%, rgba(126,240,214,0.03), transparent),
+                  linear-gradient(180deg,var(--bg-1),var(--bg-2));
+      color:var(--ink);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:12px;
+    }
+
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      transform-origin:center;
+      transition:filter .22s ease, transform .22s ease, opacity .22s ease;
+    }
+
+    header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+
+    .brand{ display:flex; align-items:center; gap:12px }
+    .logo{
+      width:46px;height:46px;border-radius:10px;
+      background:linear-gradient(135deg,#4f6bff,#7ef0d6);
+      display:grid; place-items:center; font-weight:800; color:#03102a;
+      box-shadow:0 6px 18px rgba(80,110,255,0.14);
+    }
+    .title{font-weight:700;font-size:18px}
+
+    .stats, .controls{
+      display:flex; align-items:center; gap:10px;
+    }
+
+    .stat{
+      background:var(--panel); padding:8px 12px; border-radius:10px;
+      font-weight:700; color:var(--muted); box-shadow:0 8px 30px rgba(2,6,23,0.6);
+    }
+
+    button{
+      border:0; background:var(--accent-plain); color:white; padding:8px 14px;
+      border-radius:10px; font-weight:700; cursor:pointer; box-shadow:0 8px 20px rgba(30,40,80,0.25);
+    }
+    button.secondary{ background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted) }
+    button.ghost{ background:transparent; border:0; color:var(--muted) }
+    button:active{ transform:translateY(1px) scale(.995) }
+
+    main{ display:flex; gap:18px; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+
+    .board, .side{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));
+      border-radius:14px; box-shadow:0 10px 30px rgba(3,6,20,0.5);
+      border:1px solid rgba(255,255,255,0.03); backdrop-filter:blur(6px);
+      padding:12px;
+    }
+
+    .grid{
+      --size:10;
+      display:grid;
+      grid-template-columns: repeat(var(--size), var(--cell-size));
+      gap: var(--cell-gap);
+      justify-content:center;
+      padding:12px;
+      user-select:none;
+      touch-action:none;
+      transition: transform .18s cubic-bezier(.2,.9,.2,1);
+    }
+
+    .cell{
+      width: var(--cell-size);
+      height: var(--cell-size);
+      display:grid; place-items:center;
+      background: rgba(255,255,255,0.02);
+      border-radius:8px;
+      font-weight:800;
+      text-transform:uppercase;
+      color:var(--ink);
+      cursor:pointer;
+      font-size: 14px;
+      user-select:none;
+      box-shadow: inset 0 -2px 6px rgba(0,0,0,0.25);
+      transition: transform .12s ease, box-shadow .18s ease, background .18s, outline-color .18s, width .28s ease, height .28s ease, font-size .28s ease;
+    }
+
+    .cell:hover{ transform: translateY(-4px); box-shadow:0 12px 30px rgba(2,6,23,0.6) }
+
+    .cell.hl{ outline:2px solid rgba(255,200,90,0.15); animation:pulse 900ms infinite linear; }
+    .cell.good{ outline:2px solid var(--good); animation: goodPulse 700ms ease-in-out; }
+    .cell.lock{ background: linear-gradient(135deg, rgba(55,214,122,0.12), rgba(32,80,255,0.06)); color:#eafef3; transform:scale(1.02); }
+
+    @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(255,200,90,0.06) } 70%{ box-shadow:0 0 0 8px rgba(255,200,90,0) } 100%{ box-shadow:0 0 0 0 rgba(255,200,90,0) } }
+    @keyframes goodPulse{ 0%{ transform:scale(1) } 50%{ transform:scale(1.03) } 100%{ transform:scale(1) } }
+
+    .words{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+    .word{ background:rgba(255,255,255,0.02); padding:8px 10px; border-radius:8px; font-weight:700; color:var(--muted) }
+    .word.found{ color:var(--good); text-decoration:line-through; opacity:0.95 }
+
+    .msg{ margin-top:12px; color:var(--muted); font-weight:600 }
+
+    /* modals + animations (fade-in/out + slide) */
+    .modal{
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:900; pointer-events:none;
+    }
+    .modal.open{ display:flex; pointer-events:auto; }
+    .modal .backdrop{ position:absolute; inset:0; background:linear-gradient(180deg, rgba(2,6,23,0.55), rgba(2,6,23,0.55)); backdrop-filter: blur(6px) saturate(120%); opacity:0; }
+    .card{
+      position:relative; background: linear-gradient(180deg, rgba(101,112,212,0.486), rgba(255,255,255,0.01));
+      border-radius:14px; padding:22px; width:min(520px,92%); text-align:center; border:1px solid rgba(255,255,255,0.04);
+      transform: translateY(24px) scale(.985); opacity:0; box-shadow:0 30px 80px rgba(2,8,30,0.6);
+    }
+    /* animations */
+    @keyframes fadeIn { from{ opacity:0 } to{ opacity:1 } }
+    @keyframes fadeOut { from{ opacity:1 } to{ opacity:0 } }
+    @keyframes slideUp { from{ transform: translateY(18px) scale(.98); opacity:0 } to{ transform: translateY(0) scale(1); opacity:1 } }
+    @keyframes slideDown { from{ transform: translateY(0) scale(1); opacity:1 } to{ transform: translateY(18px) scale(.98); opacity:0 } }
+
+    .backdrop.fadeIn{ animation: fadeIn .28s ease forwards }
+    .backdrop.fadeOut{ animation: fadeOut .26s ease forwards }
+    .card.slideIn{ animation: slideUp .34s cubic-bezier(.2,.9,.2,1) forwards }
+    .card.slideOut{ animation: slideDown .28s cubic-bezier(.25,.9,.2,1) forwards }
+
+    /* when modal open, card fades in */
+    .modal.open .backdrop{ opacity:1 }
+    .modal.open .card{ opacity:1; transform:none }
+
+    /* blur content behind modal */
+    body.modal-open .wrap{ filter: blur(8px) scale(.997); pointer-events:none; user-select:none }
+
+    /* shrink meter */
+    .meter {
+      width: 220px;
+      height: 14px;
+      background: rgba(255,255,255,0.025);
+      border-radius: 999px;
+      overflow: hidden;
+      box-shadow: inset 0 -2px 6px rgba(0,0,0,0.4);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+    .meter .fill{
+      height:100%;
+      width:100%;
+      background: linear-gradient(90deg,#6c8cff,#7ef0d6);
+      transform-origin:left center;
+      transition: width .28s ease, background .28s ease;
+      display:flex; align-items:center; justify-content:center; font-weight:700; color:#02102a; font-size:11px;
+    }
+
+    /* slight pulse when shrink happens */
+    .grid.shrinkPulse { animation: shrinkPulse .36s ease; }
+    @keyframes shrinkPulse {
+      0% { transform: scale(1); }
+      40% { transform: scale(.995); }
+      100% { transform: scale(1); }
+    }
+
+    /* responsive */
+    @media (max-width:880px){ main{ flex-direction:column; align-items:center } .grid{ transform:scale(.94) } }
+    @media (max-width:625px){ :root{ --cell-size:44px } .board,.side{ max-width:430px } }
+    @media (max-width:450px){ :root{ --cell-size:35px } .word{ font-size:.7em } }
+    @media (max-width:370px){ :root{ --cell-size:30px } #timer{ font-size:.7em } .board,.side{ max-width:300px } }
+  </style>
+</head>
+
+<body>
+  <div class="wrap" aria-live="polite">
+    <header>
+      <div class="brand">
+        <div class="logo">WS</div>
+        <div>
+          <div class="title">Shrinking Mode</div>
+          <div style="font-size:12px;color:var(--muted)">Combined time + score pressure — best in the world</div>
+        </div>
+      </div>
+
+      <div class="stats" style="align-items:center">
+        <div id="score" class="stat"><span class="score-pop">🏆 0</span></div>
+        <div id="timer" class="stat" style="display:inline-block">⏱ 0:00</div>
+        <div class="meter" title="Board integrity">
+          <div id="shrinkFill" class="fill">100%</div>
+        </div>
+        <button id="pauseBtn" class="secondary" title="Pause">⏸</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="board" aria-label="Puzzle board">
+        <div id="grid" class="grid" role="grid" aria-label="Word search grid"></div>
+      </section>
+
+      <aside class="side" aria-label="Words & info">
+        <div id="wordList" class="words" aria-live="polite"></div>
+        <div id="msg" class="msg">Press start to play Shrinking Mode.</div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- start modal -->
+  <div class="modal open" id="startModal" role="dialog" aria-modal="true" aria-labelledby="start-title">
+    <div class="backdrop"></div>
+    <div class="card">
+      <h2 id="start-title">Shrinking Mode — Ready?</h2>
+      <p class="small" style="color:var(--muted)">The board will slowly shrink over time. Finding words accelerates the shrink. Finish before the board becomes too small!</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+        <button id="startModalBtn">▶ Start</button>
+        <button id="openExample" class="secondary">Back</button>
+      </div>
+      <div style="margin-top:12px;color:var(--muted);font-size:13px">Tip: Draw straight lines — words may appear backwards.</div>
+    </div>
+  </div>
+
+  <!-- pause modal -->
+  <div class="modal" id="pauseModal" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <div class="backdrop"></div>
+    <div class="card">
+      <h3 id="pause-title">Game paused</h3>
+      <p class="small" style="color:var(--muted)">Timer and shrinking stopped. Take a breath.</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+        <button id="resumeBtn">▶ Resume</button>
+        <button id="quitBtn" class="secondary">Quit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- game over modal -->
+  <div class="modal" id="gameOverModal" role="dialog" aria-modal="true" aria-labelledby="go-title">
+    <div class="backdrop"></div>
+    <div class="card">
+      <h2 id="go-title">Game Over</h2>
+      <div id="goSummary" style="margin:6px 0 12px;color:var(--muted)"></div>
+      <div class="big-num" id="goTime" style="font-size:28px;font-weight:800">0:00</div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+        <button id="playAgain">↻ Play again</button>
+        <button id="closeGameOver" class="secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* -------------------------
+   Utilities & RNG
+   ------------------------- */
+function seededFromDate(d = new Date()) {
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+  let str = `${y}-${m}-${day}`;
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function rng(seed) { let s = seed >>> 0; return () => { s = Math.imul(1664525, s) + 1013904223 >>> 0; return s / 0x100000000; } }
+
+/* -------------------------
+   Wordbank & directions
+   ------------------------- */
+const WORD_BANK = "JAVASCRIPT CODE PUZZLE LOGIC MATRIX FUNCTION OBJECT DAILY TIMER SCORE WORD SEARCH SHRINK PRESSURE".split(" ");
+const DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+
+/* -------------------------
+   Puzzle builder (same as daily)
+   ------------------------- */
+function buildPuzzle({ size = 10, words = [], seed }) {
+  const R = rng(seed);
+  const grid = Array.from({ length: size }, () => Array(size).fill(null));
+  function canPlace(w, r, c, dr, dc) {
+    const r2 = r + dr * (w.length - 1), c2 = c + dc * (w.length - 1);
+    if (r2 < 0 || r2 >= size || c2 < 0 || c2 >= size) return false;
+    for (let i = 0; i < w.length; i++) {
+      const rr = r + dr * i, cc = c + dc * i;
+      if (grid[rr][cc] && grid[rr][cc] !== w[i]) return false;
+    }
+    return true;
+  }
+  function placeWord(w) {
+    for (let tries = 0; tries < 500; tries++) {
+      const dir = DIRS[Math.floor(R() * DIRS.length)];
+      const [dr, dc] = dir;
+      const r = Math.floor(R() * size), c = Math.floor(R() * size);
+      if (!canPlace(w, r, c, dr, dc)) continue;
+      for (let i = 0; i < w.length; i++) grid[r + dr * i][c + dc * i] = w[i];
+      return true;
+    }
+    return false;
+  }
+  for (const word of words) {
+    const w = R() < 0.5 ? word : word.split("").reverse().join("");
+    placeWord(w);
+  }
+  for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (!grid[r][c]) grid[r][c] = String.fromCharCode(65 + Math.floor(R() * 26));
+  return { grid };
+}
+
+/* -------------------------
+   DOM refs
+   ------------------------- */
+const gridEl = document.getElementById('grid');
+const wordListEl = document.getElementById('wordList');
+const timerEl = document.getElementById('timer');
+const scoreEl = document.getElementById('score');
+const msgEl = document.getElementById('msg');
+const shrinkFillEl = document.getElementById('shrinkFill');
+
+const startModalBtn = document.getElementById('startModalBtn');
+const startModal = document.getElementById('startModal');
+const openExample = document.getElementById('openExample');
+
+const pauseBtn = document.getElementById('pauseBtn');
+const pauseModal = document.getElementById('pauseModal');
+const resumeBtn = document.getElementById('resumeBtn');
+const quitBtn = document.getElementById('quitBtn');
+
+const gameOverModal = document.getElementById('gameOverModal');
+const goSummary = document.getElementById('goSummary');
+const goTime = document.getElementById('goTime');
+const playAgain = document.getElementById('playAgain');
+const closeGameOver = document.getElementById('closeGameOver');
+
+/* -------------------------
+   Shrink parameters (tune here)
+   ------------------------- */
+const BASE_CELL_SIZE = 55;     // px at start
+const MIN_SCALE = 0.55;        // minimum scale (55% of base) -> game over when reached
+const TIME_SHRINK_STEP = 0.02; // scale decrease every interval (2%)
+const TIME_SHRINK_INTERVAL = 3500; // ms between automatic shrinks
+const SCORE_SHRINK_STEP = 0.045; // additional shrink when a word is found (4.5%)
+
+/* -------------------------
+   State
+   ------------------------- */
+let state = {
+  running:false, paused:false,
+  seed: seededFromDate(),
+  grid:null, words:[], target:new Set(), found:new Set(),
+  score:0, startTs:0, elapsedPause:0,
+  pointerDown:false, pointerId:null, startCell:null, currentLine:[],
+  shrinkScale: 1.0,
+  cellSize: BASE_CELL_SIZE
+};
+let timerId = null;
+let shrinkIntervalId = null;
+
+/* -------------------------
+   Modal helpers with fade in/out (clever closing)
+   ------------------------- */
+function anyModalOpen(){
+  return Array.from(document.querySelectorAll('.modal')).some(m=>m.classList.contains('open'));
+}
+function openModal(modal){
+  modal.classList.remove('closing');
+  modal.classList.add('open');
+  document.body.classList.add('modal-open');
+  const bd = modal.querySelector('.backdrop'), card = modal.querySelector('.card');
+  bd.classList.remove('fadeOut'); bd.classList.add('fadeIn');
+  card.classList.remove('slideOut'); card.classList.add('slideIn');
+}
+function closeModal(modal){
+  const bd = modal.querySelector('.backdrop'), card = modal.querySelector('.card');
+  bd.classList.remove('fadeIn'); bd.classList.add('fadeOut');
+  card.classList.remove('slideIn'); card.classList.add('slideOut');
+  modal.classList.add('closing');
+  // After animation, remove open & closing, but only if that modal finished animating
+  const onEnd = () => {
+    modal.classList.remove('open','closing');
+    if (!anyModalOpen()) document.body.classList.remove('modal-open');
+    card.removeEventListener('animationend', onEnd);
+  };
+  card.addEventListener('animationend', onEnd, { once: true });
+}
+
+/* -------------------------
+   Rendering helpers
+   ------------------------- */
+function renderGrid(grid){
+  gridEl.style.setProperty('--size', grid.length);
+  gridEl.innerHTML = '';
+  for (let r=0;r<grid.length;r++){
+    for (let c=0;c<grid[r].length;c++){
+      const d = document.createElement('div');
+      d.className='cell';
+      d.dataset.r=r; d.dataset.c=c;
+      d.textContent = grid[r][c];
+      d.setAttribute('role','button');
+      gridEl.appendChild(d);
+    }
+  }
+}
+function safeId(w){ return 'w-'+w.replace(/\s+/g,'_'); }
+function renderWords(words){
+  wordListEl.innerHTML = '';
+  words.forEach(w=>{
+    const d = document.createElement('div'); d.className='word'; d.id=safeId(w); d.textContent = w; wordListEl.appendChild(d);
+  });
+}
+function setMessage(t){ msgEl.textContent = t; }
+
+/* -------------------------
+   Timer & best (simple)
+   ------------------------- */
+function startTimer(){
+  clearInterval(timerId);
+  timerId = setInterval(()=>{
+    if(!state.running || state.paused) return;
+    const e = Math.floor((Date.now() - state.startTs - state.elapsedPause) / 1000);
+    timerEl.textContent = `⏱ ${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
+  }, 500);
+}
+
+/* -------------------------
+   Shrink logic (apply + UI)
+   ------------------------- */
+function applyShrink(){
+  // compute cell size based on shrinkScale but never below MIN_SCALE*BASE_CELL_SIZE
+  state.shrinkScale = Math.max(state.shrinkScale, MIN_SCALE);
+  state.cellSize = Math.max(BASE_CELL_SIZE * MIN_SCALE, Math.round(BASE_CELL_SIZE * state.shrinkScale));
+  document.documentElement.style.setProperty('--cell-size', state.cellSize + 'px');
+
+  // update shrink meter (0..100)
+  const pct = Math.round(((state.shrinkScale - MIN_SCALE) / (1 - MIN_SCALE)) * 100);
+  shrinkFillEl.style.width = pct + '%';
+  shrinkFillEl.textContent = pct + '%';
+
+  // small visual pulse
+  gridEl.classList.add('shrinkPulse');
+  setTimeout(()=>gridEl.classList.remove('shrinkPulse'), 360);
+
+  // if reached minimum and not finished -> game over
+  if (state.shrinkScale <= MIN_SCALE && state.running && state.found.size !== state.target.size) {
+    // tiny delay so animations complete
+    setTimeout(()=> {
+      state.running = false;
+      clearInterval(shrinkIntervalId);
+      clearInterval(timerId);
+      showGameOver(false, 'Board shrank too far');
+    }, 260);
+  }
+}
+function startShrinkInterval(){
+  clearInterval(shrinkIntervalId);
+  shrinkIntervalId = setInterval(()=>{
+    if (!state.running || state.paused) return;
+    state.shrinkScale = Math.max(state.shrinkScale - TIME_SHRINK_STEP, MIN_SCALE);
+    applyShrink();
+  }, TIME_SHRINK_INTERVAL);
+}
+
+/* -------------------------
+   Setup puzzle
+   ------------------------- */
+function setupDaily(){
+  const R = rng(state.seed);
+  const shuffled = [...WORD_BANK].sort(()=>R()-0.5);
+  state.words = shuffled.slice(0,8);
+  state.target = new Set(state.words);
+  state.found = new Set();
+  const { grid } = buildPuzzle({ size:10, words: state.words, seed: state.seed });
+  state.grid = grid;
+  renderGrid(grid);
+  renderWords(state.words);
+  setMessage('Shrinking Mode — be swift!');
+  state.score = 0;
+  scoreEl.querySelector('.score-pop').textContent = '🏆 0';
+  // reset shrink values
+  state.shrinkScale = 1.0;
+  applyShrink();
+}
+
+/* -------------------------
+   Selection helpers (same as daily)
+   ------------------------- */
+function cellFromPoint(x,y){
+  const el = document.elementFromPoint(x,y);
+  if (!el) return null;
+  const cell = el.closest('.cell');
+  if (!cell) return null;
+  return { r:+cell.dataset.r, c:+cell.dataset.c, el:cell };
+}
+function normalizeDir(dr,dc){
+  const s = n => n>0?1:n<0?-1:0;
+  const r = s(dr), c = s(dc);
+  if (r!==0 && c!==0 && Math.abs(dr)!==Math.abs(dc)) return null;
+  return [r,c];
+}
+function lineCells(from,to){
+  if(!from||!to) return [];
+  const dr = to.r - from.r, dc = to.c - from.c;
+  const nd = normalizeDir(dr,dc);
+  if (!nd) return [];
+  const [rstep,cstep] = nd;
+  const len = Math.max(Math.abs(dr), Math.abs(dc));
+  const out = [];
+  for (let i=0;i<=len;i++) out.push({ r: from.r + rstep * i, c: from.c + cstep * i });
+  return out;
+}
+function pathToWord(path){
+  return path.map(p => state.grid[p.r][p.c]).join('');
+}
+function clearHighlights(){
+  (state.currentLine || []).forEach(p=>{
+    if (p && p.el && !p.el.classList.contains('lock')) p.el.classList.remove('hl','good');
+  });
+}
+function highlightPath(path, good=false){
+  path.forEach(p=>{
+    const el = gridEl.querySelector(`.cell[data-r="${p.r}"][data-c="${p.c}"]`);
+    if (el){
+      if (!el.classList.contains('lock')) el.classList.add(good? 'good':'hl');
+      p.el = el;
+    }
+  });
+}
+function lockPath(path){
+  path.forEach(p=>{
+    const el = gridEl.querySelector(`.cell[data-r="${p.r}"][data-c="${p.c}"]`);
+    if (el) el.classList.add('lock');
+  });
+}
+function animateScore(){
+  const el = scoreEl.querySelector('.score-pop');
+  el.classList.add('pop');
+  setTimeout(()=> el.classList.remove('pop'), 380);
+}
+
+/* -------------------------
+   Pointer handling (unified)
+   ------------------------- */
+function beginPointerInteraction(evt){
+  if (!state.running || state.paused) return;
+  if (evt.pointerType === 'mouse' && evt.button !== 0) return;
+  evt.preventDefault();
+  state.pointerDown = true;
+  state.pointerId = evt.pointerId;
+  try { gridEl.setPointerCapture(state.pointerId); } catch(e){}
+  const cell = cellFromPoint(evt.clientX, evt.clientY);
+  if (!cell) return;
+  state.startCell = { r: cell.r, c: cell.c };
+  state.currentLine = [cell];
+  clearHighlights();
+  highlightPath(state.currentLine);
+}
+function movePointerInteraction(evt){
+  if (!state.pointerDown || !state.running || state.paused) return;
+  if (state.pointerId && evt.pointerId !== state.pointerId) return;
+  evt.preventDefault();
+  const cell = cellFromPoint(evt.clientX, evt.clientY);
+  if (!cell) return;
+  const path = lineCells(state.startCell, cell);
+  clearHighlights();
+  if (path.length) { state.currentLine = path; highlightPath(path); } else { state.currentLine = []; }
+}
+function endPointerInteraction(evt){
+  if (!state.pointerDown) return;
+  if (state.pointerId && evt.pointerId !== state.pointerId) return;
+  evt.preventDefault();
+  try { if (state.pointerId) gridEl.releasePointerCapture(state.pointerId); } catch(e){}
+  state.pointerDown = false; state.pointerId = null;
+
+  const path = state.currentLine || [];
+  if (!path.length) { clearHighlights(); state.currentLine = []; return; }
+
+  const w = pathToWord(path);
+  const rev = w.split('').reverse().join('');
+  let match = null;
+  if (state.target.has(w)) match = w;
+  else if (state.target.has(rev)) match = rev;
+
+  if (match && !state.found.has(match)){
+    state.found.add(match);
+    state.score++;
+    scoreEl.querySelector('.score-pop').textContent = '🏆 ' + state.score;
+    animateScore();
+    lockPath(path);
+    highlightPath(path, true);
+    const id = safeId(match);
+    const wk = document.getElementById(id);
+    if (wk) wk.classList.add('found');
+    setMessage('Nice! +' + match.length + ' points');
+
+    // shrink more when word found (score-based shrink)
+    state.shrinkScale = Math.max(MIN_SCALE, state.shrinkScale - SCORE_SHRINK_STEP);
+    applyShrink();
+
+    // vibrate if possible
+    if (navigator.vibrate) navigator.vibrate(30);
+
+    if (state.found.size === state.target.size){
+      state.running = false;
+      clearInterval(shrinkIntervalId);
+      clearInterval(timerId);
+      recordBest();
+      setTimeout(()=> showGameOver(true), 260);
+    }
+  } else {
+    setMessage('Only straight lines allowed — try again!');
+  }
+
+  clearHighlights();
+  state.currentLine = [];
+}
+
+gridEl.addEventListener('pointerdown', beginPointerInteraction, { passive:false });
+gridEl.addEventListener('pointermove', movePointerInteraction, { passive:false });
+gridEl.addEventListener('pointerup', endPointerInteraction, { passive:false });
+gridEl.addEventListener('pointercancel', endPointerInteraction, { passive:false });
+
+/* -------------------------
+   Pause / Resume / Quit
+   ------------------------- */
+function doPause(){
+  if (!state.running || state.paused) return;
+  state.paused = true;
+  state.pauseStart = Date.now();
+  // stop shrink interval
+  clearInterval(shrinkIntervalId);
+  openModal(pauseModal);
+}
+function doResume(){
+  if (!state.running || !state.paused) return;
+  state.paused = false;
+  state.elapsedPause += Date.now() - state.pauseStart;
+  closeModal(pauseModal);
+  startShrinkInterval();
+}
+function doQuit(){
+  state.running = false;
+  clearInterval(shrinkIntervalId); clearInterval(timerId);
+  closeModal(pauseModal);
+  openModal(startModal);
+  setMessage("Press start to play Shrinking Mode.");
+}
+
+/* -------------------------
+   Start / Restart / Gameover
+   ------------------------- */
+function startGame(){
+  setupDaily();
+  state.running = true; state.paused = false; state.elapsedPause = 0;
+  state.startTs = Date.now();
+  startTimer();
+  startShrinkInterval();
+  setMessage('Find the words — the board will shrink!');
+  closeModal(startModal);
+}
+
+function resetForPlayAgain(){
+  state.seed = seededFromDate();
+  setupDaily();
+  state.running = true; state.paused = false; state.startTs = Date.now(); state.elapsedPause = 0;
+  startTimer();
+  startShrinkInterval();
+  closeModal(gameOverModal);
+}
+
+function showGameOver(won = true, reason = null){
+  const elapsed = Math.floor((Date.now() - state.startTs - state.elapsedPause) / 1000);
+  const mm = Math.floor(elapsed / 60), ss = String(elapsed % 60).padStart(2,'0');
+  goTime.textContent = `${mm}:${ss}`;
+  goSummary.textContent = `${won? 'All words found — great job!' : (reason || 'Board shrank too far') } · Score: ${state.score} · Found ${state.found.size}/${state.target.size}`;
+  openModal(gameOverModal);
+  setMessage(won ? "All words found — nice!" : "Game over — board integrity reached minimum.");
+}
+
+/* -------------------------
+   Best / record (localStorage)
+   ------------------------- */
+function updateBestDisplay(){ const key = "shrinking-best-" + state.seed; const b = localStorage.getItem(key); /* not shown in UI but saved */ }
+function recordBest(){
+  const e = Math.floor((Date.now() - state.startTs - state.elapsedPause)/1000);
+  const mm = Math.floor(e/60), ss = String(e%60).padStart(2,'0');
+  const f = `${mm}:${ss}`;
+  const key = "shrinking-best-" + state.seed;
+  const prev = localStorage.getItem(key) || "999:59";
+  const toSec = s => s.includes(":") ? (+s.split(":")[0])*60 + (+s.split(":")[1]) : +s;
+  if (toSec(f) < toSec(prev)) localStorage.setItem(key, f);
+  updateBestDisplay();
+}
+
+/* -------------------------
+   Event wiring (buttons, keyboard)
+   ------------------------- */
+startModalBtn.addEventListener('click', ()=> startGame());
+openExample.addEventListener('click', ()=> setMessage("Try drawing straight lines. Words may be backwards."));
+
+pauseBtn.addEventListener('click', doPause);
+resumeBtn.addEventListener('click', doResume);
+quitBtn.addEventListener('click', doQuit);
+
+playAgain.addEventListener('click', ()=> resetForPlayAgain());
+closeGameOver.addEventListener('click', ()=> closeModal(gameOverModal));
+
+window.addEventListener('keydown', (e)=>{
+  if (e.code === 'Space'){ e.preventDefault(); if (state.running){ if (state.paused) doResume(); else doPause(); } }
+  if (e.key === 'Escape'){
+    if (pauseModal.classList.contains('open')) doResume();
+    else if (gameOverModal.classList.contains('open')) closeModal(gameOverModal);
+    else if (startModal.classList.contains('open')) closeModal(startModal);
+  }
+});
+
+/* -------------------------
+   Bootstrap preview grid (initial)
+   ------------------------- */
+(function bootstrap(){
+  const previewSeed = state.seed ^ 314159;
+  const { grid } = buildPuzzle({ size:10, words:["START","PLAY","FAST"], seed: previewSeed });
+  renderGrid(grid);
+  // start modal left open by default in HTML
+  // ensure CSS var is initial
+  document.documentElement.style.setProperty('--cell-size', BASE_CELL_SIZE + 'px');
+  applyShrink();
+})();
+</script>
+</body>
+</html>

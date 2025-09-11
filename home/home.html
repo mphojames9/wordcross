@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title></title>
+  <link rel="stylesheet" href="home.css" />
+</head>
+<body>
+  <header class="site-header">
+        <!-- Theme toggle (modern, accessible) -->
+    <button
+      id="theme-toggle"
+      class="theme-toggle"
+      role="switch"
+      aria-label="Toggle theme"
+      aria-checked="false"
+      title="Toggle light / dark"
+    >🌙</button>
+    <h1 class="title" style="text-align: center;">Challenges</h1>
+  </header>
+
+  <main>
+    <!-- Tip: Update each homeCard's data-url to your real game path -->
+    <section id="homeCardsGrid" class="homeCards" aria-label="Game list">
+      <!-- Word Search -->
+      <article class="homeCard" tabindex="0"
+        data-title="Word Search"
+        data-tags="puzzle words letters"
+        data-url="../wordsearch_challenge_plus_v2/index.html">
+        <div class="thumb thumb--puzzle" aria-hidden="true">
+          <h3>Daily Challenge</h3>
+          <div class="reward" style="letter-spacing: 2px;"><img src="../images/goldIcon.png" alt="" class="balanceIcon"> 100   </div>
+          <div class="bestScore">best</div>
+        </div>
+        <h2 class="homeCard__title"></h2>
+        <p class="homeCard__desc">Find all the hidden words as fast as possible, beat your own time</p>
+        <div class="homeCard__meta">
+          <button id="mode-1" style="margin: 0 auto;"><a href="../challenges/daily.html">Open Mode</a></button>
+        </div>
+      </article>
+
+      <!-- Memory Match -->
+      <article class="homeCard" tabindex="0"
+        data-title="Memory Match"
+        data-tags="memory homeCards flip puzzle"
+        data-url="../memory-match/index.html">
+        <div class="thumb thumb--memory" aria-hidden="true">MM</div>
+        <h2 class="homeCard__title">Memory Match</h2>
+        <p class="homeCard__desc">Flip homeCards and match pairs as fast as you can.</p>
+        <div class="homeCard__meta">
+          <span class="tag">Puzzle</span>
+          <span class="tag">Casual</span>
+        </div>
+      </article>
+
+      <!-- Sudoku -->
+      <article class="homeCard" tabindex="0"
+        data-title="Sudoku"
+        data-tags="numbers logic puzzle"
+        data-url="../sudoku/index.html">
+        <div class="thumb thumb--numbers" aria-hidden="true">SDK</div>
+        <h2 class="homeCard__title">Sudoku</h2>
+        <p class="homeCard__desc">Classic number logic with multiple difficulties.</p>
+        <div class="homeCard__meta">
+          <span class="tag">Logic</span>
+          <span class="tag">Classic</span>
+        </div>
+      </article>
+
+      <!-- Tetris Clone -->
+      <article class="homeCard" tabindex="0"
+        data-title="Block Stacker"
+        data-tags="tetris arcade blocks"
+        data-url="../block-stacker/index.html">
+        <div class="thumb thumb--arcade" aria-hidden="true">BLK</div>
+        <h2 class="homeCard__title">Block Stacker</h2>
+        <p class="homeCard__desc">Stack and clear lines in this arcade classic.</p>
+        <div class="homeCard__meta">
+          <span class="tag">Arcade</span>
+          <span class="tag">Fast</span>
+        </div>
+      </article>
+
+      <!-- Endless Runner -->
+      <article class="homeCard" tabindex="0"
+        data-title="Sky Runner"
+        data-tags="runner jump avoid arcade"
+        data-url="../sky-runner/index.html">
+        <div class="thumb thumb--runner" aria-hidden="true">RUN</div>
+        <h2 class="homeCard__title">Sky Runner</h2>
+        <p class="homeCard__desc">Jump, slide, and survive in an endless world.</p>
+        <div class="homeCard__meta">
+          <span class="tag">Runner</span>
+          <span class="tag">Casual</span>
+        </div>
+      </article>
+    </section>
+
+    <p id="emptyState" class="empty" hidden>No games match your search.</p>
+  </main>
+
+  <script>
+        (function () {
+      const ROOT = document.documentElement;
+      const TOGGLE = document.getElementById('theme-toggle');
+      const KEY = 'theme';
+
+      // Determine preferred theme: saved > system > default light
+      function getInitialTheme() {
+        try {
+          const saved = localStorage.getItem(KEY);
+          if (saved === 'light' || saved === 'dark') return saved;
+        } catch (e) { /* ignore localStorage errors */ }
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
+        return 'light';
+      }
+
+      function applyTheme(theme) {
+        ROOT.setAttribute('data-theme', theme);
+        TOGGLE.setAttribute('aria-checked', String(theme === 'dark'));
+        TOGGLE.textContent = theme === 'dark' ? '☀️' : '🌙';
+      }
+
+      // Init theme
+      const initial = getInitialTheme();
+      applyTheme(initial);
+
+      // Toggle handler
+      TOGGLE.addEventListener('click', () => {
+        const current = ROOT.getAttribute('data-theme') || 'light';
+        const next = current === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+
+      // Keyboard support
+      TOGGLE.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          TOGGLE.click();
+        }
+      });
+
+      // Optional: respond to system changes if user hasn't explicitly saved a preference
+      try {
+        const saved = localStorage.getItem(KEY);
+        if (!saved && window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (ev) => {
+            applyTheme(ev.matches ? 'dark' : 'light');
+          });
+        }
+      } catch (e) {}
+
+      // Existing: daily best score display (defensive)
+      const dailyBestScoreDisplay = document.querySelector('.bestScore');
+      let bestScore = localStorage.getItem('daily-best--3388534');
+      if (!bestScore || bestScore === 'null') bestScore = '0';
+      if (dailyBestScoreDisplay) dailyBestScoreDisplay.textContent = `🏆 ${bestScore} minutes`;
+    })();
+  </script>
+</body>
+</html>

@@ -1,3 +1,27 @@
+    /* ==========================
+   THEME TOGGLE
+==========================*/
+function applyTheme(theme) { 
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("theme", theme); // Save preference
+}
+
+// Load saved theme or default to light
+const savedTheme = localStorage.getItem("theme") || "light";
+applyTheme(savedTheme);
+
+// Toggle function
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute("data-theme");
+  const newTheme = currentTheme === "light" ? "dark" : "light";
+  applyTheme(newTheme);
+}
+
+    themeToggle.addEventListener("click", () => {
+      toggleTheme()
+    });
+    
+document.addEventListener("DOMContentLoaded", () => {
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 const format = num => String(num);
@@ -251,7 +275,7 @@ function initiate(){
   });
 
   // shop open
-  $('#settings').addEventListener('click', () => openModal('menu-settings-section-wrapper'));
+  $('#settings-btn').addEventListener('click', () => openModal('menu-settings-section-wrapper'));
   $('#btnShop').addEventListener('click', () => openModal('modalShop'));
   $('#btnShopIcon').addEventListener('click', () => openModal('modalShop'));
   $('#btnShopIcon').addEventListener('click', () => openModal('modalShop'));
@@ -293,3 +317,4 @@ function initiate(){
 
 /* prepare defaults, then initiate */
 initiate();
+});

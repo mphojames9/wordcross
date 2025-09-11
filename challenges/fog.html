@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Word Search — Fog Mode</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --panel: #161a2e;
+      --panel-2: #1d2240;
+      --ink: #e6e9ff;
+      --muted: #98a0c6;
+      --accent: #6c8cff;
+      --good: #37d67a;
+      --warn: #ffc857;
+      --bad: #ff6b6b;
+      --grid: #23284b;
+      --found: #2b335f;
+    }
+    * { box-sizing: border-box }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.4 system-ui;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 12px; gap: 12px;
+    }
+    .stats, .controls { display: flex; gap: 10px; flex-wrap: wrap; }
+    button {
+      background: var(--accent); color: #fff; font-weight: 700;
+      padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer;
+    }
+    button.secondary { background: transparent; border: 1px solid #555; }
+    main { display: grid; gap: 16px; grid-template-columns: 1fr min(380px, 40%); }
+    .board, .side { background: var(--panel-2); padding: 16px; border-radius: 12px; }
+    .grid {
+      --size: 10; display: grid; grid-template-columns: repeat(var(--size), 1fr);
+      gap: 4px; user-select: none;
+    }
+    .cell {
+      width: 40px; height: 40px; display: grid; place-items: center;
+      border-radius: 6px; font-weight: bold; text-transform: uppercase;
+    }
+    .cell.fog {
+      background: #000;
+      color: transparent;
+    }
+    .cell.visible {
+      background: var(--grid);
+      color: var(--ink);
+    }
+    .cell.hl { outline: 2px solid var(--warn); }
+    .cell.lock { background: var(--found); }
+    .cell.good { outline: 2px solid var(--good); }
+    .words {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-top: 12px;
+    }
+    .word { background: #222; padding: 6px 8px; border-radius: 6px; font-weight: bold; }
+    .word.found { color: var(--good); text-decoration: line-through; }
+    .msg { margin-top: 10px; color: var(--muted); }
+    .modal {
+      position: fixed; inset: 0; display: none;
+      align-items: center; justify-content: center; background: rgba(0,0,0,.6);
+    }
+    .modal.open { display: flex; }
+    .card { background: #161a2e; padding: 20px; border-radius: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div><strong>🌫️ Word Search (Fog Mode)</strong></div>
+      <div class="stats">
+        <div id="timer">⏳ 0:00</div>
+        <div id="score">🏆 0</div>
+        <div id="best">Best: —</div>
+      </div>
+      <div class="controls">
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn" class="secondary">⏸ Pause</button>
+      </div>
+    </header>
+    <main>
+      <section class="board">
+        <div id="grid" class="grid"></div>
+      </section>
+      <aside class="side">
+        <h3>Words (Correct spelling)</h3>
+        <div id="wordList" class="words"></div>
+        <div id="msg" class="msg">Press start to play today’s fog puzzle.</div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Start modal -->
+  <div class="modal open" id="startModal">
+    <div class="card">
+      <h2>Ready?</h2>
+      <p>The grid is hidden in fog. Only nearby cells are visible!</p>
+      <button id="startModalBtn">▶ Start Game</button>
+    </div>
+  </div>
+
+  <!-- Pause modal -->
+  <div class="modal" id="pauseModal">
+    <div class="card">
+      <h3>Game paused</h3>
+      <p>Timer is stopped.</p>
+      <button id="resumeBtn">▶ Resume</button>
+    </div>
+  </div>
+
+  <script>
+    /* --- Utilities --- */
+    function seededFromDate(d = new Date()) {
+      const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+      let str = `${y}-${m}-${day}`;
+      let h = 2166136261 >>> 0;
+      for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return h >>> 0;
+    }
+    function rng(seed) { let s = seed >>> 0; return () => { s = Math.imul(1664525, s) + 1013904223 >>> 0; return s / 0x100000000; } }
+
+    /* --- Word bank --- */
+    const WORD_BANK = "JAVASCRIPT CODE PUZZLE LOGIC MATRIX FUNCTION OBJECT DAILY TIMER SCORE WORD SEARCH".split(" ");
+    const DIRS = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+
+    function buildPuzzle({ size = 10, words = [], seed }) {
+      const R = rng(seed);
+      const grid = Array.from({ length: size }, () => Array(size).fill(null));
+      function canPlace(w, r, c, dr, dc) {
+        const r2 = r + dr * (w.length - 1), c2 = c + dc * (w.length - 1);
+        if (r2 < 0 || r2 >= size || c2 < 0 || c2 >= size) return false;
+        for (let i = 0; i < w.length; i++) {
+          const rr = r + dr * i, cc = c + dc * i;
+          if (grid[rr][cc] && grid[rr][cc] !== w[i]) return false;
+        }
+        return true;
+      }
+      function placeWord(w) {
+        for (let tries = 0; tries < 300; tries++) {
+          const [dr, dc] = DIRS[Math.floor(R() * DIRS.length)];
+          const r = Math.floor(R() * size), c = Math.floor(R() * size);
+          if (!canPlace(w, r, c, dr, dc)) continue;
+          for (let i = 0; i < w.length; i++) grid[r + dr * i][c + dc * i] = w[i];
+          return true;
+        }
+        return false;
+      }
+      for (const word of words) {
+        const w = word.split("").reverse().join(""); // always reversed
+        placeWord(w);
+      }
+      for (let r = 0; r < size; r++) for (let c = 0; c < size; c++)
+        if (!grid[r][c]) grid[r][c] = String.fromCharCode(65 + Math.floor(R() * 26));
+      return { grid };
+    }
+
+    /* --- DOM refs --- */
+    const gridEl = document.getElementById('grid');
+    const wordListEl = document.getElementById('wordList');
+    const timerEl = document.getElementById('timer');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const msgEl = document.getElementById('msg');
+    const startBtn = document.getElementById('startBtn');
+    const startModalBtn = document.getElementById('startModalBtn');
+    const startModal = document.getElementById('startModal');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const pauseModal = document.getElementById('pauseModal');
+    const resumeBtn = document.getElementById('resumeBtn');
+
+    /* --- Game state --- */
+    let state = { running:false, paused:false, seed:seededFromDate(),
+      grid:null, words:[], target:new Set(), found:new Set(),
+      score:0, startTs:0, elapsedPause:0, down:false,
+      startCell:null, currentLine:[] };
+    let timerId = null;
+
+    /* --- Rendering --- */
+    function renderGrid(grid) {
+      gridEl.style.setProperty('--size', grid.length);
+      gridEl.innerHTML = "";
+      for (let r=0;r<grid.length;r++)for (let c=0;c<grid[r].length;c++) {
+        const d=document.createElement('div');
+        d.className='cell fog'; // everything fogged initially
+        d.dataset.r=r; d.dataset.c=c;
+        d.textContent=grid[r][c];
+        gridEl.appendChild(d);
+      }
+    }
+    function renderWords(words) {
+      wordListEl.innerHTML="";
+      words.forEach(w=>{
+        const d=document.createElement('div');
+        d.className='word'; d.id=`w-${w}`;
+        d.textContent=w; // ✅ show correct spelling
+        wordListEl.appendChild(d);
+      });
+    }
+    function setMessage(t){ msgEl.textContent=t; }
+
+    /* --- Fog reveal --- */
+    function revealArea(r, c, radius=1) {
+      for (let dr=-radius; dr<=radius; dr++) {
+        for (let dc=-radius; dc<=radius; dc++) {
+          const rr=r+dr, cc=c+dc;
+          const el=gridEl.querySelector(`.cell[data-r="${rr}"][data-c="${cc}"]`);
+          if(el){ el.classList.remove('fog'); el.classList.add('visible'); }
+        }
+      }
+    }
+
+    /* --- Timer --- */
+    function startTimer(){ clearInterval(timerId); timerId=setInterval(()=>{
+      if(!state.running||state.paused) return;
+      const e=Math.floor((Date.now()-state.startTs-state.elapsedPause)/1000);
+      timerEl.textContent=`⏳ ${Math.floor(e/60)}:${String(e%60).padStart(2,'0')}`;
+    },500);}
+    function updateBestDisplay(){ const key="fog-best-"+state.seed;
+      const b=localStorage.getItem(key); bestEl.textContent="Best: "+(b||"—"); }
+    function recordBest(){ const e=Math.floor((Date.now()-state.startTs-state.elapsedPause)/1000);
+      const mm=Math.floor(e/60), ss=String(e%60).padStart(2,'0'); const f=`${mm}:${ss}`;
+      const key="fog-best-"+state.seed; const prev=localStorage.getItem(key)||"999:59";
+      const toSec=s=>s.includes(":")?(+s.split(":")[0])*60+(+s.split(":")[1]):+s;
+      if(toSec(f)<toSec(prev)) localStorage.setItem(key,f); updateBestDisplay(); }
+
+    /* --- Setup --- */
+    function setupDaily(){
+      const R=rng(state.seed); const shuffled=[...WORD_BANK].sort(()=>R()-0.5);
+      state.words=shuffled.slice(0,8); // originals
+      state.target=new Set(state.words); state.found=new Set();
+      const {grid}=buildPuzzle({size:10, words:state.words, seed:state.seed});
+      state.grid=grid;
+
+      renderGrid(grid);
+      renderWords(state.words); // ✅ correct spellings in list
+
+      setMessage("Fog puzzle: explore the board to find backwards words!");
+      state.score=0; scoreEl.textContent="🏆 0"; updateBestDisplay();
+    }
+
+    /* --- Helpers --- */
+    function cellFromEvent(e){ const t=e.target.closest('.cell'); if(!t)return null;
+      return {r:+t.dataset.r,c:+t.dataset.c,el:t}; }
+    function normalizeDir(dr,dc){ const s=n=>n>0?1:n<0?-1:0;
+      const r=s(dr),c=s(dc); if(r!==0&&c!==0&&Math.abs(dr)!==Math.abs(dc)) return null;
+      return [r,c]; }
+    function lineCells(from,to){ const dr=to.r-from.r,dc=to.c-from.c;
+      const nd=normalizeDir(dr,dc); if(!nd)return[];
+      const [rstep,cstep]=nd; const len=Math.max(Math.abs(dr),Math.abs(dc));
+      const out=[]; for(let i=0;i<=len;i++) out.push({r:from.r+rstep*i,c:from.c+cstep*i});
+      return out; }
+    function pathToWord(path){ return path.map(p=>state.grid[p.r][p.c]).join(""); }
+    function clearHighlights(){ state.currentLine.forEach(p=>p.el?.classList.remove('hl','good')); }
+    function highlightPath(path,good=false){ path.forEach(p=>{
+      const el=gridEl.querySelector(`.cell[data-r="${p.r}"][data-c="${p.c}"]`);
+      if(el){ el.classList.add(good?'good':'hl'); p.el=el; }
+    }); }
+    function lockPath(path){ path.forEach(p=>{
+      const el=gridEl.querySelector(`.cell[data-r="${p.r}"][data-c="${p.c}"]`);
+      if(el) el.classList.add('lock');
+    }); }
+
+    /* --- Mouse/touch --- */
+    function onDown(e){ const cell=cellFromEvent(e); if(!cell||!state.running||state.paused) return;
+      e.preventDefault(); state.down=true; state.startCell={r:cell.r,c:cell.c};
+      state.currentLine=[cell]; clearHighlights(); highlightPath(state.currentLine);
+      revealArea(cell.r, cell.c, 1);
+    }
+    function onMove(e){ if(!state.down||!state.running||state.paused) return;
+      const cell=cellFromEvent(e); if(!cell)return;
+      const path=lineCells(state.startCell,cell); clearHighlights();
+      if(path.length){ state.currentLine=path; highlightPath(path); }
+      revealArea(cell.r, cell.c, 1);
+    }
+    function onUp(e){ if(!state.down||!state.running||state.paused) return;
+      state.down=false; const cell=cellFromEvent(e); if(!cell) return;
+      const w=pathToWord(state.currentLine); const rev=w.split("").reverse().join("");
+      let match=null; if(state.target.has(rev)) match=rev;
+      if(match&&!state.found.has(match)){
+        state.found.add(match); state.score++; scoreEl.textContent="🏆 "+state.score;
+        lockPath(state.currentLine); highlightPath(state.currentLine,true);
+        document.getElementById("w-"+match).classList.add('found');
+        if(state.found.size===state.target.size){ state.running=false; clearInterval(timerId);
+          recordBest(); setMessage("All words found!"); }
+      } else { setMessage("Backwards only, keep exploring!"); }
+      clearHighlights(); state.currentLine=[]; }
+    function touchWrap(fn){ return ev=>{ const t=ev.touches[0]||ev.changedTouches[0];
+      const el=document.elementFromPoint(t.clientX,t.clientY); if(el) ev.target=el; fn(ev); }; }
+
+    /* --- Pause/Resume --- */
+    function doPause(){ if(!state.running||state.paused) return;
+      state.paused=true; state.pauseStart=Date.now(); pauseModal.classList.add('open'); }
+    function doResume(){ if(!state.running||!state.paused) return;
+      state.paused=false; state.elapsedPause+=Date.now()-state.pauseStart;
+      pauseModal.classList.remove('open'); }
+
+    /* --- Start game --- */
+    function startGame(){ setupDaily(); state.running=true; state.paused=false;
+      state.elapsedPause=0; state.startTs=Date.now(); startTimer(); }
+    startBtn.addEventListener('click',()=>{ if(!state.running) startGame(); startModal.classList.remove('open'); });
+    startModalBtn.addEventListener('click',()=>{ if(!state.running) startGame(); startModal.classList.remove('open'); });
+    pauseBtn.addEventListener('click',doPause); resumeBtn.addEventListener('click',doResume);
+    gridEl.addEventListener('mousedown',onDown); gridEl.addEventListener('mousemove',onMove);
+    window.addEventListener('mouseup',onUp);
+    gridEl.addEventListener('touchstart',touchWrap(onDown),{passive:false});
+    gridEl.addEventListener('touchmove',touchWrap(onMove),{passive:false});
+    gridEl.addEventListener('touchend',touchWrap(onUp),{passive:false});
+
+    /* --- Bootstrap placeholder --- */
+    (function bootstrap(){ const {grid}=buildPuzzle({size:10,words:["START","PLAY"],seed:state.seed^1234});
+      renderGrid(grid); })();
+  </script>
+</body>
+</html>
+
