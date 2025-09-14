@@ -7,8 +7,6 @@
     <title>Word Search Deluxe (Silent)</title>
     <link rel="stylesheet" href="./styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6068689040743381"
-        crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -80,7 +78,7 @@
 
                     <section class="cardHome" aria-labelledby="main-action">
                         <div id="main-action" class="play-wrap">
-                                    <button class="button-13" role="button" id="start">
+                                    <button class="button-13 start-game-menu" role="button" id="start">
             <span class="text" style="font-weight: 700;">▶</span>
             <span class="button-13-background"></span>
             <span class="button-13-border"></span>
@@ -110,7 +108,7 @@
                                     <div style="margin: 20px">⚔️</div>
                                     <button class="selectBtnHome" role="button">
                                         <span class="text">
-                                            <a href="./home/home.html">CHALLENGE MODE</a>
+                                            <a href="./challenges/shrinking.html">CHALLENGE MODE</a>
                                         </span>
                                     </button>
                                 </div>
@@ -149,23 +147,23 @@
             <div class="modalHome" id="menu-settings-section-wrapper" role="dialog" aria-modal="true"
                 aria-labelledby="setTitle">
                 <div class="menu-settings-section">
-                    <div class="kv">
+                    <div class="kv" style="display:none">
                         <label>Theme</label>
                         <select id="themeSelect"></select>
                     </div>
                     <div class="kv">
                         <label>Difficulty</label>
                         <select id="difficulty">
-                            <option value="easy">Easy (90s)</option>
-                            <option value="medium" selected>Medium (60s)</option>
-                            <option value="hard">Hard (45s)</option>
+                            <option value="easy">Easy (300s)</option>
+                            <option value="medium" selected>Medium (200s)</option>
+                            <option value="hard">Hard (150s)</option>
                         </select>
                     </div>
-                    <div class="kv">
+                    <div class="kv" style="display:none">
                         <label>Grid size</label>
                         <input id="gridSize" type="number" min="8" max="18" value="10" />
                     </div>
-                    <div class="kv">
+                    <div class="kv" style="display:none">
                         <label>Words per level</label>
                         <input id="wordsPerLevel" type="number" min="4" max="10" value="5" />
                     </div>
@@ -306,8 +304,7 @@
     </div>
 
     <div class="game" id="game">
-        <div id="hud" class="row">
-            
+        <div id="hud" class="row">    
             <div class="row-content">
                 <div class="pill">LVL<strong id="level"></strong></div>
                                 <div class="theme">
@@ -418,6 +415,11 @@
                     <h4>Time Left</h4>
                     <div class="big" id="levelComplete_time">0s</div>
                 </div>
+            </div>
+            <div class="extraReward"></div>
+                        <div class="balance" aria-live="polite" aria-atomic="true">
+                <img src="./images/goldIcon.png" alt="" class="balanceIcon">
+                <div class="coins" id="levelCoins">0</div>
             </div>
 
             <div class="actions">

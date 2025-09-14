@@ -18,11 +18,11 @@ a {
 /* ===== animation.css ===== */
 /* Default: Dark Theme */
 :root {
-  --bg: linear-gradient(180deg, #142b61 0%, #1e243f 20%, #1e243f 70%, #233477 100%);
+  --bg: hsla(221, 67%, 7%, 0.99);
   --bg-glass: linear-gradient(180deg, #071023f5 0%, #0f1220ef 60%);
   --fg: #e0e0e0;
   --muted: #cccccc;
-  --board: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.015));
+  --board: #0b1020;;
   --overlay-bg: linear-gradient(180deg, rgba(101, 112, 212, 0.788), rgba(255, 255, 255, 0));
   --overlay-model: linear-gradient(180deg, rgba(101, 112, 212, 0.973), rgba(27, 26, 26, 0.514));
   --overlay-parent: rgba(4, 8, 20, 0.904);
@@ -37,6 +37,7 @@ a {
 
 /* Light Theme — modern glass + accents */
 [data-theme="light"] {
+    --bg: #ffffff00;
   --bg-glass:linear-gradient(to top, #00c5fbb7 0%, #005bea 100%);
   --fg: hsl(220 12% 12%);
   --muted: rgb(51, 39, 39);
@@ -53,6 +54,25 @@ a {
   hsl(187, 100%, 86%) 92%,
   hsl(244, 61%, 90%) 100%
 );
+}
+
+
+
+body {
+    background-size:cover;
+    background-repeat: no-repeat;
+    font-family: sans-serif;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100vh;
+    position: relative;
+    background-color: var(--bg);
+    background-image: url('./images/background/day.png');
+    background-blend-mode: multiply;
+    color: var(--muted);
+
 }
 
 /* Overlay background */
@@ -229,7 +249,7 @@ a {
   content: "";
   height: 26px; width: 26px;
   left: 4px; bottom: 4px;
-  background-color: var(--muted);
+  background-color: black;
   transition: 0.4s;
   border-radius: 50%;
 }
@@ -257,24 +277,6 @@ input:checked + .slider:before {
     font-style: normal;
 }
 
-
-body {
-    background-position: fixed;
-    background-size:cover;
-    background-repeat: no-repeat;
-    font-family: sans-serif;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    height: 100vh;
-    position: relative;
-    background-image: url('./images/background/ChatGPT\ Image\ Sep\ 11\,\ 2025\,\ 04_07_02\ PM.png');
-    background-blend-mode: multiply;
-    background-color: var(--bg);
-    color: var(--muted);
-
-}
 .wheelContent {
     background-color: var(--bg);
     box-shadow: var(--bs);
@@ -387,6 +389,7 @@ body {
     background: var(--overlay-bg);
     padding: 20px;
     border-radius: 25px;
+    transform: translateY(10px);
 
 }
 
@@ -887,6 +890,20 @@ button[disabled] {
 }
 
 
+.opDelay {
+    animation: delay 3000ms ease-in;
+}
+
+@keyframes delay {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+
 /* Level Complete overlay */
 #levelComplete_wrapper .title-row {
     display: flex;
@@ -1006,6 +1023,7 @@ button[disabled] {
 /* Blurred state */
 .blurred {
     filter: blur(2px) saturate(.3);
+    transform: translateY(0);
 }
 
 /* Menu (mobile / optional) */
@@ -1101,6 +1119,10 @@ a {
     align-items: center
 }
 
+.start-game-menu {
+    width: 90%;
+}
+
 
 /* Center panel */
 .main {
@@ -1111,7 +1133,7 @@ a {
     align-items: center;
     justify-content: space-between;
     min-height: 0;
-    width: 90%;
+    width: 60%;
 }
 
 .header {
@@ -1217,11 +1239,12 @@ a {
 
 #game {
     opacity: 0;
-    transition: 2000ms ease-in-out;
+    transition: 100ms ease-in-out;
     max-width: 1000px;
     width: 100%;
     height: 100vh;
     position: fixed;
+    
 }
 
 .info-row {
@@ -1235,6 +1258,10 @@ a {
 
 .muted {
     text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.699);
+}
+
+#skipAd {
+    color: white;
 }
 
 /* Shop / Action buttons */
@@ -1446,6 +1473,7 @@ a {
     width: 80%;
     padding: 10px;
     background: #333;
+    color: white; 
     border-radius: 10px;
     margin-top: 20px;
     overflow: hidden;
@@ -1507,8 +1535,10 @@ a {
 
 /* micro adjustments */
 .muted {
-    color: var(--muted)
+    color: white;
 }
+
+
 
 .sr-only {
     position: absolute;
@@ -1739,16 +1769,14 @@ color: var(--muted);
 
 
 #words {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid: 2px;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
     width: 100%;
     background: var(--board);
-    padding: 10px 5px;
+    padding: 2px;
 }
 
 #words span {
@@ -2282,6 +2310,14 @@ input[type="number"] {
 a:hover {
     color: var(--accent5);
 }
+.extraReward {
+    text-align: center;
+    color: white;
+    letter-spacing: 2px;
+    font-weight: 700;
+    margin: 1rem;
+}
+
 
 .powerUptopUp,
 .dailyRewards {
@@ -2300,7 +2336,7 @@ a:hover {
     width: 150px;
     height: 30px;
     font-size: 0.8rem;
-    color: var(--muted);
+    color: white;
     margin: 10px auto;
 
 }

@@ -38,8 +38,16 @@ function toast(message, time = 2800){
 
 /* ---------- Persistent State ---------- */
 function save(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
-function load(key, def){ const v = localStorage.getItem(key); return v ? JSON.parse(v) : def;
- }
+function load(key, def){
+  try {
+    const v = localStorage.getItem(key);
+    return v !== null ? JSON.parse(v) : def;
+  } catch(e){
+    console.warn("Corrupt localStorage for", key, e);
+    return def;
+  }
+}
+
 /* ---------- App Logic ---------- */
 const DEFAULTS = {
   coins: 0,
@@ -232,7 +240,6 @@ function initiate(){
   $('#start').addEventListener('click', () => {
     const ach = getAchievements();
     saveAchievements({ gamesPlayed: (ach.gamesPlayed||0) + 1 });
-    addCoins(10);
   });
 
   // Achievements modal
